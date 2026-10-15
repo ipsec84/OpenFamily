@@ -644,6 +644,7 @@ function renderCalendarFilters() {
   let html = `<button class="filter-pill ${calendarFilter === 'all' ? 'active' : ''}" onclick="filterCalendar('all')">Todos</button>`;
   
   state.members.forEach(m => {
+    const isAct = String(m.id) === calendarFilter;
     const avatarHtml = m.photo_url 
       ? `<img src="${m.photo_url}" alt="${escapeHtml(m.name)}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">`
       : `${m.avatar || '👤'}`;
