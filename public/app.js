@@ -860,22 +860,18 @@ function renderMemberProgressBanner() {
   }
 
   banner.innerHTML = `
-    <div class="member-progress-left" onclick="openMemberModal(${currentMember.id})">
+    <div class="member-progress-left">
       <div class="member-avatar-big" style="border: 2px solid ${currentMember.color};">
         ${avatarDisplay}
       </div>
       <div class="member-name-role">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <h3>${escapeHtml(currentMember.name)}</h3>
-          <button class="member-edit-btn" onclick="event.stopPropagation(); openMemberModal(${currentMember.id})" title="Editar perfil y foto">✏️ Editar</button>
-        </div>
+        <h3>${escapeHtml(currentMember.name)}</h3>
         <span>${currentMember.role === 'child' ? 'Superhéroe en entrenamiento ⭐' : 'Guía de la familia 👑'}${ageHint}</span>
       </div>
     </div>
-    <div class="member-points-box" onclick="openMemberModal(${currentMember.id})">
+    <div class="member-points-box">
       <div class="points-number">${currentMember.points} ⭐</div>
       <div class="points-label">Puntos Acumulados</div>
-      <button class="member-add-task-btn" onclick="event.stopPropagation(); openAddTaskModalForMember(${currentMember.id})" style="margin-top:6px;">+ Añadir Tarea</button>
     </div>
   `;
 }

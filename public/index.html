@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>OpenFamily - Smart Family Dashboard</title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/style.css?v=2.7.1">
+  <link rel="stylesheet" href="/style.css?v=2.8.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -137,20 +137,11 @@
 
       <!-- BOTONES DE ACCIÓN RÁPIDA -->
       <div class="header-right">
-        <button class="action-pill icon-only-pill sound-btn" id="sound-toggle-btn" onclick="toggleSound()" title="Silenciar / Activar Sonidos">
-          <span>🔊</span>
-        </button>
-        <button class="action-pill icon-only-pill fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullscreen()" title="Pantalla Completa">
-          <span>⛶</span>
-        </button>
         <button class="action-pill bell-btn" onclick="triggerDinnerCall()" title="Llamar a todos a la mesa">
           <span>🔔</span> A Cenar
         </button>
         <button class="action-pill photos-btn" onclick="startScreensaver(event)" title="Ver fotos familiares en pantalla completa">
           <span>🖼️</span> Fotos
-        </button>
-        <button class="action-pill admin-btn" onclick="openDeviceControlsModal()" title="Brillo, volumen y Wi-Fi del marco">
-          <span>🎛️</span> Marco
         </button>
         <button class="action-pill admin-btn" onclick="openAdminModal()" title="Panel de Padres y Ajustes">
           <span>⚙️</span> Padres
@@ -174,11 +165,6 @@
         <!-- Filtros rápidos por miembro -->
         <div class="member-pills-bar" id="calendar-member-filters">
           <button class="filter-pill active" onclick="filterCalendar('all')">Todos</button>
-          <button class="filter-pill filter-father" onclick="filterCalendar(1)">👨 Papá</button>
-          <button class="filter-pill filter-mother" onclick="filterCalendar(2)">👩 Mamá</button>
-          <button class="filter-pill filter-kid1" onclick="filterCalendar(3)">👦 Hijo 1</button>
-          <button class="filter-pill filter-kid2" onclick="filterCalendar(4)">👧 Hija 1</button>
-          <button class="filter-pill filter-soto" onclick="filterCalendar('soto')">🏛️ Local</button>
         </div>
 
         <!-- Lista de eventos organizada por días (Hoy, Mañana, Próximos) -->
@@ -205,13 +191,14 @@
           <!-- Renderizado dinámico (puntos, avatar, nivel, racha) -->
         </div>
 
+        <!-- Botón Añadir Tarea idéntico a Añadir Premio -->
+        <div class="pane-header-info" style="display: flex; margin: 6px 0 10px 0;">
+          <button class="btn-secondary" onclick="openAddTaskModalForMember(activeMemberId)" style="width: 100%; padding: 6px 12px; font-size: 0.85rem; font-weight: 700;">+ Añadir Tarea</button>
+        </div>
+
         <!-- Lista táctil de tareas del día -->
         <div class="tasks-scroll-list" id="tasks-list">
           <!-- Tareas dinámicas con botón táctil grande -->
-        </div>
-
-        <div class="card-footer-action">
-          <button class="btn-secondary" onclick="openAddTaskModal()">+ Añadir Tarea</button>
         </div>
       </section>
 
@@ -826,6 +813,6 @@
   <!-- CONTENEDOR DE CONFETI -->
   <canvas id="confetti-canvas"></canvas>
 
-  <script src="/app.js?v=2.7.1"></script>
+  <script src="/app.js?v=2.8.0"></script>
 </body>
 </html>
