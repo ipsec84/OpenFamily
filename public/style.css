@@ -2801,21 +2801,7 @@ select option {
 
 /* --- BADGES DE FRECUENCIA EN TAREAS --- */
 .task-freq-pill {
-  font-size: 0.68rem;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-muted);
-  font-weight: 500;
-  margin-left: 6px;
-}
-.task-freq-pill.daily {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-}
-.task-freq-pill.once {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
+  display: none !important;
 }
 
 /* --- BOTÓN EDITAR EN RECOMPENSAS --- */

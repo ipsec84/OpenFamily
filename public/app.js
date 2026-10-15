@@ -756,10 +756,6 @@ function renderTasksList() {
   let html = '';
   memberTasks.forEach(task => {
     const isDone = task.status === 'completed';
-    const isOnce = task.frequency === 'once';
-    const freqBadge = isOnce
-      ? `<span class="task-freq-pill once" title="Tarea puntual de 1 día">🎯 1 día</span>`
-      : `<span class="task-freq-pill daily" title="Tarea diaria">🔄 Diaria</span>`;
 
     html += `
       <div class="task-item ${isDone ? 'completed' : ''}" onclick="toggleTask(${task.id})">
