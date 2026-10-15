@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>OpenFamily - Smart Family Dashboard</title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/style.css?v=2.6.0">
+  <link rel="stylesheet" href="/style.css?v=2.7.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -127,16 +127,22 @@
               <span class="weather-loc-tag" id="weather-loc-name">📍 Tiempo</span>
               <span>Hum: <b id="weather-hum">60%</b></span>
               <span>Viento: <b id="weather-wind">8 km/h</b></span>
-              <span class="forecast-toggle-hint">▾ 7 días</span>
+              <span class="forecast-toggle-hint">▾ Previsión</span>
             </div>
           </div>
         </div>
-        <!-- Desplegable 7 días -->
-        <div id="weather-week" class="weather-week hidden"></div>
+        <!-- Desplegable Horas + 7 días -->
+        <div id="weather-week" class="weather-week hidden" onclick="event.stopPropagation()"></div>
       </div>
 
       <!-- BOTONES DE ACCIÓN RÁPIDA -->
       <div class="header-right">
+        <button class="action-pill icon-only-pill sound-btn" id="sound-toggle-btn" onclick="toggleSound()" title="Silenciar / Activar Sonidos">
+          <span>🔊</span>
+        </button>
+        <button class="action-pill icon-only-pill fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullscreen()" title="Pantalla Completa">
+          <span>⛶</span>
+        </button>
         <button class="action-pill bell-btn" onclick="triggerDinnerCall()" title="Llamar a todos a la mesa">
           <span>🔔</span> A Cenar
         </button>
@@ -820,6 +826,6 @@
   <!-- CONTENEDOR DE CONFETI -->
   <canvas id="confetti-canvas"></canvas>
 
-  <script src="/app.js?v=2.6.0"></script>
+  <script src="/app.js?v=2.7.0"></script>
 </body>
 </html>

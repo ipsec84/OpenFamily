@@ -166,7 +166,9 @@ function switchMobileView(view) {
   else if (view === 'more') switchRightTab('notes');
 }
 
-// Inicialización de AudioContext con interacción del usuario
+// --- GESTIÓN DE SONIDO Y AUDIO CONTEXT ---
+let isSoundMuted = localStorage.getItem('openfamily_sound_muted') === 'true';
+
 function getAudioContext() {
   if (!audioCtx) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -180,30 +182,82 @@ function getAudioContext() {
   return audioCtx;
 }
 
-// Sintetizador de Sonidos Web Audio
-function playChime() {
+function toggleSound() {
+  isSoundMuted = !isSoundMuted;
+  localStorage.setItem('openfamily_sound_muted', isSoundMuted ? 'true' : 'false');
+  updateSoundButtonUI();
+  if (!isSoundMuted) {
+    playTaskSuccessSound();
+  }
+}
+
+function updateSoundButtonUI() {
+  const btn = document.getElementById('sound-toggle-btn');
+  if (btn) {
+    btn.innerHTML = isSoundMuted ? '<span>🔇</span>' : '<span>🔊</span>';
+    btn.title = isSoundMuted ? 'Sonidos silenciados (Toca para activar)' : 'Sonidos activados (Toca para silenciar)';
+    btn.classList.toggle('muted', isSoundMuted);
+  }
+}
+
+// Sonido Web Audio API alegre para tarea completada (C5 -> E5)
+function playTaskSuccessSound() {
+  if (isSoundMuted) return;
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, now); // D5
-    osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
-    osc.frequency.exponentialRampToValueAtTime(1174.66, now + 0.3); // D6
-    gain.gain.setValueAtTime(0.3, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.6);
+    const notes = [523.25, 659.25];
+    notes.forEach((freq, idx) => {
+      const t = now + idx * 0.12;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.35);
+    });
   } catch (e) {
     console.warn('Audio error:', e);
   }
 }
 
+// Sonido Web Audio API fanfarria triunfal para premio canjeado (C5 -> E5 -> G5 -> C6)
+function playRewardFanfareSound() {
+  if (isSoundMuted) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const fanfare = [523.25, 659.25, 783.99, 1046.50];
+    fanfare.forEach((freq, idx) => {
+      const t = now + idx * 0.13;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.28, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.42);
+    });
+  } catch (e) {
+    console.warn('Fanfare audio error:', e);
+  }
+}
+
+function playChime() {
+  playTaskSuccessSound();
+}
+
 function playDinnerBell() {
+  if (isSoundMuted) return;
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -222,6 +276,47 @@ function playDinnerBell() {
     }
   } catch (e) {
     console.warn('Bell audio error:', e);
+  }
+}
+
+// --- WAKE LOCK API & PANTALLA COMPLETA ---
+let wakeLockSentinel = null;
+
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+      wakeLockSentinel.addEventListener('release', () => {
+        wakeLockSentinel = null;
+      });
+      console.log('OpenFamily: Wake Lock de pantalla activo');
+    } catch (err) {
+      console.warn('OpenFamily: No se pudo adquirir Wake Lock:', err);
+    }
+  }
+}
+
+function toggleFullscreen() {
+  try {
+    if (!document.fullscreenElement) {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) elem.requestFullscreen();
+      else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+  } catch (err) {
+    console.warn('Fullscreen error:', err);
+  }
+}
+
+function updateFullscreenButtonUI() {
+  const btn = document.getElementById('fullscreen-toggle-btn');
+  if (btn) {
+    const isFs = !!document.fullscreenElement;
+    btn.innerHTML = isFs ? '<span>🗗</span>' : '<span>⛶</span>';
+    btn.title = isFs ? 'Salir de Pantalla Completa' : 'Pantalla Completa';
   }
 }
 
@@ -420,29 +515,82 @@ function renderHeaderWeather() {
   if (humEl) humEl.textContent = `${cur.relative_humidity_2m}%`;
   if (windEl) windEl.textContent = `${Math.round(cur.wind_speed_10m)} km/h`;
 
-  // Previsión 7 días
+  // Previsión Horas + 7 días
   const weekEl = document.getElementById('weather-week');
-  if (weekEl && state.weather.daily) {
+  if (weekEl && (state.weather.daily || state.weather.hourly)) {
     const daily = state.weather.daily;
+    const hourly = state.weather.hourly;
     const diasCortos = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    let html = `<div style="font-weight:700; font-size:0.85rem; color:#38bdf8; padding:4px 6px 8px 6px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:8px; text-align:center;">📍 El tiempo en ${escapeHtml(locName)}</div>`;
-    for (let i = 0; i < daily.time.length; i++) {
-      const d = new Date(daily.time[i] + 'T12:00:00');
-      const dayName = i === 0 ? 'Hoy' : diasCortos[d.getDay()];
-      const dayWmo = WMO_MAP[daily.weather_code[i]] || { icon: '🌤️' };
-      const max = Math.round(daily.temperature_2m_max[i]);
-      const min = Math.round(daily.temperature_2m_min[i]);
-      const rainProb = (daily.precipitation_probability_max && daily.precipitation_probability_max[i]) ? daily.precipitation_probability_max[i] : 0;
 
-      html += `
-        <div class="forecast-day">
-          <span class="forecast-day-name">${dayName}</span>
-          <span class="forecast-day-icon">${dayWmo.icon}</span>
-          <span class="forecast-day-temps">${max}° <small>${min}°</small></span>
-          <span style="font-size:0.75rem; color:#38bdf8; min-width:35px; text-align:right;">${rainProb > 0 ? `💧${rainProb}%` : ''}</span>
-        </div>
-      `;
+    let html = `
+      <div class="weather-popup-header">
+        <span class="weather-popup-title">📍 El tiempo en ${escapeHtml(locName)}</span>
+        <span class="weather-popup-close" onclick="toggleWeatherWeek()">✕</span>
+      </div>
+    `;
+
+    // 1. Horas Próximas (próximas 12 horas)
+    if (hourly && hourly.time && hourly.time.length > 0) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+      const currentDay = String(now.getDate()).padStart(2, '0');
+      const currentHour = String(now.getHours()).padStart(2, '0');
+      const currentPrefix = `${currentYear}-${currentMonth}-${currentDay}T${currentHour}`;
+
+      let startIdx = hourly.time.findIndex(t => t.startsWith(currentPrefix));
+      if (startIdx === -1) {
+        startIdx = 0;
+      }
+
+      html += `<div class="weather-section-title">⏱️ Próximas Horas</div>`;
+      html += `<div class="weather-hourly-strip">`;
+      const endIdx = Math.min(startIdx + 12, hourly.time.length);
+      for (let i = startIdx; i < endIdx; i++) {
+        const timePart = hourly.time[i].split('T')[1] || '00:00';
+        const hourStr = timePart.slice(0, 2);
+        const label = i === startIdx ? 'Ahora' : `${parseInt(hourStr, 10)}:00`;
+        const code = (hourly.weather_code && hourly.weather_code[i] !== undefined) ? hourly.weather_code[i] : 0;
+        const hWmo = WMO_MAP[code] || { icon: '🌤️' };
+        const temp = Math.round(hourly.temperature_2m[i]);
+        const rainProb = (hourly.precipitation_probability && hourly.precipitation_probability[i]) ? hourly.precipitation_probability[i] : 0;
+
+        html += `
+          <div class="hourly-item ${i === startIdx ? 'current' : ''}">
+            <span class="hourly-time">${label}</span>
+            <span class="hourly-icon">${hWmo.icon}</span>
+            <span class="hourly-temp">${temp}°</span>
+            <span class="hourly-rain">${rainProb > 0 ? `💧${rainProb}%` : '<span style="opacity:0;">-</span>'}</span>
+          </div>
+        `;
+      }
+      html += `</div>`;
     }
+
+    // 2. Previsión 7 Días
+    if (daily && daily.time) {
+      html += `<div class="weather-section-title" style="margin-top:6px;">📅 Próximos 7 Días</div>`;
+      html += `<div class="weather-days-grid">`;
+      for (let i = 0; i < daily.time.length; i++) {
+        const d = new Date(daily.time[i] + 'T12:00:00');
+        const dayName = i === 0 ? 'Hoy' : diasCortos[d.getDay()];
+        const dayWmo = WMO_MAP[daily.weather_code[i]] || { icon: '🌤️' };
+        const max = Math.round(daily.temperature_2m_max[i]);
+        const min = Math.round(daily.temperature_2m_min[i]);
+        const rainProb = (daily.precipitation_probability_max && daily.precipitation_probability_max[i]) ? daily.precipitation_probability_max[i] : 0;
+
+        html += `
+          <div class="forecast-day">
+            <span class="forecast-day-name">${dayName}</span>
+            <span class="forecast-day-icon">${dayWmo.icon}</span>
+            <span class="forecast-day-temps">${max}° <small>${min}°</small></span>
+            <span class="forecast-day-rain">${rainProb > 0 ? `💧${rainProb}%` : ''}</span>
+          </div>
+        `;
+      }
+      html += `</div>`;
+    }
+
     weekEl.innerHTML = html;
   }
 
@@ -900,7 +1048,7 @@ async function claimReward(rewardId, cost, title) {
       body: JSON.stringify({ member_id: activeMemberId })
     });
     if (res.ok) {
-      playChime();
+      playRewardFanfareSound();
       triggerConfetti();
       fetchState();
     } else {
@@ -2667,7 +2815,25 @@ window.addEventListener('DOMContentLoaded', () => {
     window.addEventListener(evt, resetIdleTimer, { passive: true });
   });
 
-  // Despertar AudioContext con primer toque en pantalla
-  document.addEventListener('touchstart', getAudioContext, { once: true });
-  document.addEventListener('click', getAudioContext, { once: true });
+  // Inicializar estado de sonido y pantalla completa
+  updateSoundButtonUI();
+  updateFullscreenButtonUI();
+  document.addEventListener('fullscreenchange', updateFullscreenButtonUI);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenButtonUI);
+
+  // Intentar adquirir Wake Lock para evitar apagado involuntario de pantalla
+  requestWakeLock();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      requestWakeLock();
+    }
+  });
+
+  // Despertar AudioContext y WakeLock con primer toque en pantalla
+  const initAudioAndLock = () => {
+    getAudioContext();
+    if (!wakeLockSentinel) requestWakeLock();
+  };
+  document.addEventListener('touchstart', initAudioAndLock, { once: true });
+  document.addEventListener('click', initAudioAndLock, { once: true });
 });
