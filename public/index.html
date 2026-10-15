@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>OpenFamily - Smart Family Dashboard</title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/style.css?v=2.3.0">
+  <link rel="stylesheet" href="/style.css?v=2.5.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -77,14 +77,7 @@
     <div class="screensaver-exit-hint">Toca cualquier punto para volver al panel</div>
   </div>
 
-  <!-- PANTALLA MODO NOCHE TENUE (Automático o manual) -->
-  <div id="night-overlay" class="night-overlay hidden" onclick="toggleNightMode(false)">
-    <div class="night-clock">
-      <div id="night-time" class="night-time">00:00</div>
-      <div id="night-date" class="night-date">Miércoles, 14 Octubre</div>
-      <div class="night-hint">Toca la pantalla para encender</div>
-    </div>
-  </div>
+
 
   <!-- AVISO DE EMERGENCIA / ALARMA A CENAR CON POSPONER -->
   <div id="alarm-banner" class="alarm-banner hidden">
@@ -149,9 +142,6 @@
         </button>
         <button class="action-pill photos-btn" onclick="startScreensaver(event)" title="Ver fotos familiares en pantalla completa">
           <span>🖼️</span> Fotos
-        </button>
-        <button class="action-pill night-btn" onclick="toggleNightMode(true)" title="Modo noche tenue">
-          <span>🌙</span> Noche
         </button>
         <button class="action-pill admin-btn" onclick="openDeviceControlsModal()" title="Brillo, volumen y Wi-Fi del marco">
           <span>🎛️</span> Marco
@@ -233,8 +223,7 @@
 
         <!-- TAB 1: TIENDA DE RECOMPENSAS -->
         <div id="tab-content-rewards" class="tab-pane active">
-          <div class="pane-header-info" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-            <span class="subtext">Canjea tus puntos acumulados por premios</span>
+          <div class="pane-header-info" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
             <button class="btn-secondary" onclick="openAddRewardModal()" style="padding: 4px 10px; font-size: 0.78rem; white-space: nowrap; flex-shrink: 0;">+ Añadir Premio</button>
           </div>
           <div class="rewards-grid" id="rewards-grid">
@@ -406,11 +395,7 @@
               <b>Hacer Sonar Campana</b>
               <small>Envía aviso "¡A Cenar!" con sonido al salón</small>
             </button>
-            <button class="remote-btn" onclick="remoteToggleNight()">
-              <span class="icon">🌙</span>
-              <b>Alternar Modo Noche</b>
-              <small>Apaga/Atenúa la pantalla remotamente</small>
-            </button>
+
             <button class="remote-btn" onclick="openDeviceWifiSettings()">
               <span class="icon">📶</span>
               <b>Configurar Wi-Fi</b>
@@ -669,6 +654,28 @@
     </div>
   </div>
 
+  <!-- MODAL: EDITAR MENÚ DEL DÍA (LÁPIZ) -->
+  <div id="menu-edit-modal" class="modal-overlay hidden">
+    <div class="modal-card small-modal">
+      <div class="modal-header">
+        <h3 id="menu-edit-modal-title">✏️ Modificar Menú</h3>
+        <button class="modal-close" onclick="closeModal('menu-edit-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="menu-edit-day" value="1">
+        <label>🍽️ Comida / Almuerzo:
+          <input type="text" id="menu-edit-lunch" placeholder="Ej: Lentejas caseras con arroz">
+        </label>
+        <label style="margin-top: 10px;">🌙 Cena:
+          <input type="text" id="menu-edit-dinner" placeholder="Ej: Tortilla francesa y ensalada">
+        </label>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button class="btn-primary full-width" onclick="saveMenuDay()">Guardar Menú</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: EDITAR PERFIL Y FOTO DE MIEMBRO -->
   <div id="member-modal" class="modal-overlay hidden">
     <div class="modal-card small-modal">
@@ -813,6 +820,6 @@
   <!-- CONTENEDOR DE CONFETI -->
   <canvas id="confetti-canvas"></canvas>
 
-  <script src="/app.js?v=2.3.0"></script>
+  <script src="/app.js?v=2.5.0"></script>
 </body>
 </html>

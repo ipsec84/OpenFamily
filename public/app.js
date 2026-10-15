@@ -40,6 +40,7 @@ let currentMobileView = 'calendar';
 
 // Interceptor global de fetch para añadir cabecera de autenticación
 const originalFetch = window.fetch;
+const authFetch = (url, opts) => fetch(url, opts);
 window.fetch = async function(url, options = {}) {
   options = options || {};
   options.headers = options.headers || {};
@@ -376,15 +377,7 @@ function checkAutoNightMode(now) {
     shouldBeNight = currentMinutes >= startMinutes && currentMinutes < endMinutes;
   }
 
-  // Solo aplicar si no fue cancelado manualmente en esta sesión
-  const overlay = document.getElementById('night-overlay');
-  if (overlay && overlay.dataset.manualDismiss !== 'true') {
-    if (shouldBeNight && !isNightMode) {
-      toggleNightMode(true);
-    } else if (!shouldBeNight && isNightMode && overlay.dataset.manualSet !== 'true') {
-      toggleNightMode(false);
-    }
-  }
+  // Modo noche eliminado por completo a petición
 }
 
 // --- CLIMA LOCAL ---
@@ -467,18 +460,9 @@ function toggleWeatherWeek() {
 
 // --- MODO NOCHE Y ALARMA A CENAR ---
 function toggleNightMode(active) {
-  isNightMode = active;
+  isNightMode = false;
   const overlay = document.getElementById('night-overlay');
-  if (overlay) {
-    if (active) {
-      overlay.classList.remove('hidden');
-      overlay.dataset.manualSet = 'true';
-    } else {
-      overlay.classList.add('hidden');
-      overlay.dataset.manualDismiss = 'true';
-      delete overlay.dataset.manualSet;
-    }
-  }
+  if (overlay) overlay.classList.add('hidden');
 }
 
 function triggerDinnerCall() {
@@ -512,13 +496,12 @@ function renderCalendarFilters() {
   let html = `<button class="filter-pill ${calendarFilter === 'all' ? 'active' : ''}" onclick="filterCalendar('all')">Todos</button>`;
   
   state.members.forEach(m => {
-    const isAct = calendarFilter === String(m.id);
     const avatarHtml = m.photo_url 
-      ? `<img src="${m.photo_url}" alt="${m.name}">`
-      : `${m.avatar} `;
+      ? `<img src="${m.photo_url}" alt="${escapeHtml(m.name)}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">`
+      : `${m.avatar || '👤'}`;
     html += `
-      <button class="filter-pill ${isAct ? 'active' : ''}" style="${isAct ? `background:${m.color}; border-color:${m.color}; color:#fff;` : ''}" onclick="filterCalendar('${m.id}')">
-        ${avatarHtml}${m.name}
+      <button class="filter-pill ${isAct ? 'active' : ''}" style="${isAct ? `background:${m.color}; border-color:${m.color}; color:#fff;` : ''}" onclick="filterCalendar('${m.id}')" title="${escapeHtml(m.name)}">
+        ${avatarHtml}
       </button>
     `;
   });
@@ -743,6 +726,7 @@ function renderMemberProgressBanner() {
     <div class="member-points-box" onclick="openMemberModal(${currentMember.id})">
       <div class="points-number">${currentMember.points} ⭐</div>
       <div class="points-label">Puntos Acumulados</div>
+      <button class="member-add-task-btn" onclick="event.stopPropagation(); openAddTaskModalForMember(${currentMember.id})" style="margin-top:6px;">+ Añadir Tarea</button>
     </div>
   `;
 }
@@ -786,7 +770,6 @@ function renderTasksList() {
           <div class="task-title">
             <span>${task.icon || '⭐'}</span>
             <span>${escapeHtml(task.title)}</span>
-            ${freqBadge}
           </div>
         </div>
         <div class="task-points-pill">+${task.points} ⭐</div>
@@ -946,6 +929,10 @@ function renderMenu() {
   const todayMenu = state.weeklyMenu.find(m => m.day_of_week === dayIdx) || { lunch: 'No planificado', dinner: 'No planificado' };
   
   todayBox.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      <span style="font-weight:700; font-size:0.85rem; color:#38bdf8;">Comida de Hoy</span>
+      <button class="menu-edit-btn" onclick="openEditMenuDayModal(${dayIdx})" title="Editar menú de hoy">✏️</button>
+    </div>
     <div class="menu-meal-row">
       <span class="menu-meal-label">Comida:</span>
       <span class="menu-meal-value">${escapeHtml(todayMenu.lunch || 'Sin asignar')}</span>
@@ -967,10 +954,45 @@ function renderMenu() {
           <span>🍽️ ${escapeHtml(item.lunch || '-')}</span>
           <span style="color:var(--text-muted); font-size:0.72rem;">🌙 ${escapeHtml(item.dinner || '-')}</span>
         </div>
+        <button class="menu-edit-btn" onclick="openEditMenuDayModal(${item.day_of_week})" title="Editar menú del ${diasNombres[item.day_of_week]}">✏️</button>
       </div>
     `;
   });
   weekList.innerHTML = html;
+}
+
+function openEditMenuDayModal(dayIdx) {
+  const diasNombres = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const dayNum = parseInt(dayIdx, 10);
+  const item = (state.weeklyMenu || []).find(m => m.day_of_week === dayNum) || { lunch: '', dinner: '' };
+
+  const titleEl = document.getElementById('menu-edit-modal-title');
+  if (titleEl) titleEl.textContent = `✏️ Menú del ${diasNombres[dayNum] || 'Día'}`;
+
+  document.getElementById('menu-edit-day').value = dayNum;
+  document.getElementById('menu-edit-lunch').value = item.lunch || '';
+  document.getElementById('menu-edit-dinner').value = item.dinner || '';
+  openModal('menu-edit-modal');
+}
+
+async function saveMenuDay() {
+  const day = document.getElementById('menu-edit-day').value;
+  const lunch = document.getElementById('menu-edit-lunch').value.trim();
+  const dinner = document.getElementById('menu-edit-dinner').value.trim();
+
+  try {
+    const res = await fetch(`/api/menu/${day}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lunch, dinner })
+    });
+    if (res.ok) {
+      closeModal('menu-edit-modal');
+      fetchState();
+    }
+  } catch (err) {
+    console.error('Error guardando menú:', err);
+  }
 }
 
 // 3. Lista de la Compra
@@ -1317,7 +1339,7 @@ async function saveEvent() {
   try {
     const url = editId ? `/api/events/${editId}` : '/api/events';
     const method = editId ? 'PUT' : 'POST';
-    await authFetch(url, {
+    await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, member_id: member_id ? parseInt(member_id) : null, date, time, all_day, notes })
@@ -1339,7 +1361,7 @@ async function deleteModalEvent() {
 async function deleteEvent(id) {
   if (!confirm('¿Eliminar este evento de la agenda?')) return;
   try {
-    await authFetch(`/api/events/${id}`, { method: 'DELETE' });
+    await fetch(`/api/events/${id}`, { method: 'DELETE' });
     fetchState();
   } catch (e) {
     console.error('Error deleting event:', e);
@@ -1355,7 +1377,8 @@ function populateTaskMemberSelect(selectedVal) {
   if (selectedVal) sel.value = String(selectedVal);
 }
 
-function openAddTaskModal() {
+function openAddTaskModal(presetMemberId) {
+  const targetMemberId = presetMemberId || activeMemberId || (state.members[0] ? state.members[0].id : 1);
   const titleEl = document.getElementById('task-modal-title');
   if (titleEl) titleEl.textContent = 'Añadir Tarea';
   const editIdEl = document.getElementById('task-edit-id');
@@ -1363,13 +1386,17 @@ function openAddTaskModal() {
   const delBtn = document.getElementById('task-btn-delete');
   if (delBtn) delBtn.classList.add('hidden');
 
-  populateTaskMemberSelect(activeMemberId || (state.members[0] ? state.members[0].id : 3));
+  populateTaskMemberSelect(targetMemberId);
   document.getElementById('task-title').value = '';
   document.getElementById('task-points').value = '10';
   document.getElementById('task-freq').value = 'daily';
   document.getElementById('task-icon').value = '⭐';
   renderEmojiPicker('task-emoji-picker', TASK_EMOJIS, 'task-icon');
   openModal('task-modal');
+}
+
+function openAddTaskModalForMember(memberId) {
+  openAddTaskModal(memberId);
 }
 
 function openEditTaskModal(id) {
@@ -1404,7 +1431,7 @@ async function saveTask() {
   try {
     const url = editId ? `/api/tasks/${editId}` : '/api/tasks';
     const method = editId ? 'PUT' : 'POST';
-    await authFetch(url, {
+    await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, member_id, points, frequency, icon })

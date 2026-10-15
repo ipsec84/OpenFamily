@@ -1424,6 +1424,13 @@ body {
   color: #fff;
   font-size: 0.9rem;
   outline: none;
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  padding: 8px 12px;
 }
 
 .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus {
@@ -2551,12 +2558,14 @@ body {
   margin-top: 4px;
 }
 
-.hud-caption {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #fef08a;
-  margin-top: 6px;
-  max-width: 400px;
+.hud-caption, #screensaver-caption {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
 }
 
 .screensaver-exit-hint {
@@ -3056,4 +3065,43 @@ body {
 }
 .month-day-event-row:hover {
   background: rgba(255, 255, 255, 0.08);
+}
+
+/* Botón lápiz para editar menú semanal */
+.menu-edit-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+.menu-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* Botón directo de añadir tarea en perfil */
+.member-add-task-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.member-add-task-btn:hover {
+  background: #0284c7;
+  color: #fff;
+  border-color: #0284c7;
 }
