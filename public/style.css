@@ -853,13 +853,15 @@ body {
   color: #fff;
 }
 
-.member-name-role span {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+.member-name-role span,
+.points-label {
+  display: none !important;
 }
 
 .member-points-box {
   text-align: right;
+  display: flex;
+  align-items: center;
 }
 
 .points-number {
@@ -867,13 +869,6 @@ body {
   font-weight: 800;
   color: var(--color-gold);
   line-height: 1;
-}
-
-.points-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 .tasks-scroll-list {

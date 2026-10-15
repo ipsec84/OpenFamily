@@ -866,12 +866,10 @@ function renderMemberProgressBanner() {
       </div>
       <div class="member-name-role">
         <h3>${escapeHtml(currentMember.name)}</h3>
-        <span>${currentMember.role === 'child' ? 'Superhéroe en entrenamiento ⭐' : 'Guía de la familia 👑'}${ageHint}</span>
       </div>
     </div>
     <div class="member-points-box">
       <div class="points-number">${currentMember.points} ⭐</div>
-      <div class="points-label">Puntos Acumulados</div>
     </div>
   `;
 }
