@@ -24,6 +24,8 @@ services:
     volumes:
       # Datos persistentes de SQLite y fotos familiares
       - ./data:/app/data
+      # Archivos estáticos de interfaz web (actualizaciones instantáneas)
+      - ./public:/app/public
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s
