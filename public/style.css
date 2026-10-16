@@ -2511,15 +2511,88 @@ select option {
 }
 
 .inline-month-panel {
-  width: 320px;
+  width: 330px;
   flex-shrink: 0;
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.inline-calendar-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.inline-today-btn {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 4px 14px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.inline-today-btn:hover {
+  background: #0284c7;
+  color: #fff;
+}
+
+.inline-month-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inline-month-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.inline-month-subheading {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  letter-spacing: -0.2px;
+  text-transform: capitalize;
+}
+
+.month-days-grid.compact-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  text-align: center;
+}
+
+.compact-grid .weekday-header {
+  font-size: 0.72rem;
+  padding: 2px 0;
+  color: var(--text-dim);
+}
+
+.compact-grid .month-day-cell {
+  aspect-ratio: 1.15;
+  font-size: 0.82rem;
+  border-radius: 6px;
+}
+
+.compact-grid .month-day-cell.has-event::after {
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
 }
 
 .inline-day-filter-bar {
@@ -2527,7 +2600,7 @@ select option {
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  margin-top: 8px;
+  margin-top: 4px;
   background: rgba(56, 189, 248, 0.15);
   border: 1px solid rgba(56, 189, 248, 0.3);
   border-radius: 8px;

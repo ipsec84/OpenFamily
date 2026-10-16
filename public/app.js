@@ -621,16 +621,25 @@ function renderCalendarFilters() {
 }
 
 function renderInlineMonthCalendar() {
-  const titleEl = document.getElementById('inline-month-title');
-  const gridEl = document.getElementById('inline-month-days-grid');
-  if (!titleEl || !gridEl) return;
+  const title1 = document.getElementById('inline-month-title-1');
+  const grid1 = document.getElementById('inline-month-days-1');
+  const title2 = document.getElementById('inline-month-title-2');
+  const grid2 = document.getElementById('inline-month-days-2');
+  if (!grid1 || !grid2) return;
 
-  const year = inlineCalendarDate.getFullYear();
-  const month = inlineCalendarDate.getMonth();
+  renderSingleMonth(inlineCalendarDate, title1, grid1);
+
+  const nextMonthDate = new Date(inlineCalendarDate.getFullYear(), inlineCalendarDate.getMonth() + 1, 1);
+  renderSingleMonth(nextMonthDate, title2, grid2);
+}
+
+function renderSingleMonth(dateObj, titleEl, gridEl) {
+  const year = dateObj.getFullYear();
+  const month = dateObj.getMonth();
   const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  titleEl.textContent = `${meses[month]} ${year}`;
+  if (titleEl) titleEl.textContent = `${meses[month]} ${year}`;
 
-  const weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  const weekdays = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
   let html = weekdays.map(d => `<div class="weekday-header">${d}</div>`).join('');
 
   const firstDay = new Date(year, month, 1);
@@ -672,6 +681,11 @@ function renderInlineMonthCalendar() {
 
 function changeMonth(delta) {
   inlineCalendarDate.setMonth(inlineCalendarDate.getMonth() + delta);
+  renderInlineMonthCalendar();
+}
+
+function jumpToCurrentMonth() {
+  inlineCalendarDate = new Date();
   renderInlineMonthCalendar();
 }
 

@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>OpenFamily - Smart Family Dashboard</title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/style.css?v=3.0.0">
+  <link rel="stylesheet" href="/style.css?v=3.0.1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -167,14 +167,31 @@
         </div>
 
         <div class="calendar-split-body">
-          <!-- Calendario mensual integrado a la izquierda -->
+          <!-- Calendario mensual integrado a la izquierda (2 Meses) -->
           <div class="inline-month-panel">
-            <div class="month-header">
-              <button class="month-nav-btn" onclick="changeMonth(-1)">◀</button>
-              <h3 id="inline-month-title" class="month-title">Mes Año</h3>
-              <button class="month-nav-btn" onclick="changeMonth(1)">▶</button>
+            <!-- Barra de navegación general -->
+            <div class="inline-calendar-nav-bar">
+              <button class="month-nav-btn" onclick="changeMonth(-1)" title="Mes anterior">◀</button>
+              <button class="inline-today-btn" onclick="jumpToCurrentMonth()">Hoy</button>
+              <button class="month-nav-btn" onclick="changeMonth(1)" title="Mes siguiente">▶</button>
             </div>
-            <div class="month-days-grid" id="inline-month-days-grid"></div>
+
+            <!-- Mes 1 (Mes actual / enfocado) -->
+            <div class="inline-month-block">
+              <div class="inline-month-title-row">
+                <h4 id="inline-month-title-1" class="inline-month-subheading">Octubre 2026</h4>
+              </div>
+              <div class="month-days-grid compact-grid" id="inline-month-days-1"></div>
+            </div>
+
+            <!-- Mes 2 (Mes siguiente) -->
+            <div class="inline-month-block">
+              <div class="inline-month-title-row">
+                <h4 id="inline-month-title-2" class="inline-month-subheading">Noviembre 2026</h4>
+              </div>
+              <div class="month-days-grid compact-grid" id="inline-month-days-2"></div>
+            </div>
+
             <div id="inline-day-filter-bar" class="inline-day-filter-bar hidden">
               <span id="inline-day-filter-label">Día seleccionado</span>
               <button class="btn-secondary" style="padding:4px 10px; font-size:0.78rem;" onclick="clearInlineDayFilter()">Ver todos</button>

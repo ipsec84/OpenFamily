@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const PHOTOS_DIR = path.join(DATA_DIR, 'photos');
-const APP_VERSION = '3.0.0';
+const APP_VERSION = '3.0.1';
 
 function formatLocalDate(dateObj) {
   const d = dateObj instanceof Date ? dateObj : new Date(dateObj);
