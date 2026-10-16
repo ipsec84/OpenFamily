@@ -221,14 +221,14 @@ db.serialize(() => {
       db.run(`INSERT INTO tasks (title, points, member_id, frequency, icon) VALUES
         ('Hacer la cama', 10, 3, 'daily', '🛏️'),
         ('Deberes del cole', 20, 3, 'daily', '📚'),
-        ('Lavarse los dientes (noche)', 10, 3, 'daily', '🪥'),
+        ('Lavarse los dientes (noche)', 10, 3, 'daily', '😁'),
         ('Poner o quitar la mesa', 15, 3, 'daily', '🍽️'),
         ('Hacer la cama', 10, 4, 'daily', '🛏️'),
-        ('Recoger juguetes', 15, 4, 'daily', '🧸'),
-        ('Lavarse los dientes (noche)', 10, 4, 'daily', '🪥'),
+        ('Recoger juguetes', 15, 4, 'daily', '🎲'),
+        ('Lavarse los dientes (noche)', 10, 4, 'daily', '😁'),
         ('Leer 15 minutos', 20, 4, 'daily', '📖'),
-        ('Poner lavadora', 0, 1, 'daily', '🧺'),
-        ('Revisar compra semanal', 0, 2, 'daily', '🛒')
+        ('Poner lavadora', 0, 1, 'daily', '👕'),
+        ('Revisar compra semanal', 0, 2, 'daily', '🍎')
       `);
 
       db.run(`INSERT INTO rewards (title, cost, icon, description) VALUES
@@ -276,6 +276,14 @@ db.serialize(() => {
       }
     }
   });
+
+  // Asegurar compatibilidad de emojis con Android 6.0.1 (reemplazar emojis Unicode 9+ que salen como cuadro vacío)
+  db.run(`UPDATE tasks SET icon = '😁' WHERE icon IN ('🪥', '🦷')`);
+  db.run(`UPDATE tasks SET icon = '🎲' WHERE icon IN ('🧸', '🧩')`);
+  db.run(`UPDATE tasks SET icon = '👕' WHERE icon = '🧺'`);
+  db.run(`UPDATE tasks SET icon = '🍎' WHERE icon = '🛒'`);
+  db.run(`UPDATE tasks SET icon = '✨' WHERE icon = '🧹'`);
+  db.run(`UPDATE tasks SET icon = '🌱' WHERE icon = '🪴'`);
 });
 
 // --- CLIMA (Open-Meteo con 7 días de previsión) ---

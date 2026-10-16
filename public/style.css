@@ -625,10 +625,11 @@ body {
 }
 
 .title-with-icon h2 {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: -0.3px;
   color: #fff;
+  white-space: nowrap;
 }
 
 .card-btn-add {
@@ -652,7 +653,7 @@ body {
    ======================================================== */
 .member-pills-bar {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   overflow-x: auto;
   padding-bottom: 8px;
   margin-bottom: 8px;
@@ -663,16 +664,16 @@ body {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-muted);
   border: 1px solid var(--border-glass);
-  font-size: 0.95rem;
+  font-size: 0.86rem;
   font-weight: 700;
-  padding: 8px 14px;
+  padding: 6px 10px;
   border-radius: var(--radius-full);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .filter-pill.active {
