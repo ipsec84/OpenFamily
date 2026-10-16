@@ -302,6 +302,13 @@ function initWebSocket() {
       console.log('Mensaje WS:', data.type);
 
       switch (data.type) {
+        case 'INIT':
+          if (state.appVersion && data.version && data.version !== state.appVersion) {
+            window.location.reload(true);
+            return;
+          }
+          fetchState();
+          break;
         case 'REFRESH':
         case 'PHOTOS_UPDATED':
           fetchState();
@@ -358,7 +365,12 @@ async function fetchState() {
       throw new Error('Error al obtener estado');
     }
     hidePinAuthOverlay();
+    const prevVersion = state && state.appVersion;
     state = await res.json();
+    if (prevVersion && state.appVersion && prevVersion !== state.appVersion) {
+      window.location.reload(true);
+      return;
+    }
 
     if (!activeMemberId && state.members.length > 0) {
       // Por defecto seleccionar el primer niño o el primer miembro
@@ -2367,7 +2379,13 @@ function stopScreensaver(e) {
 
   screensaverActive = false;
   const overlay = document.getElementById('screensaver-overlay');
-  if (overlay) overlay.classList.add('hidden');
+  if (overlay) {
+    if (e && e.type === 'touchstart') {
+      setTimeout(() => overlay.classList.add('hidden'), 120);
+    } else {
+      overlay.classList.add('hidden');
+    }
+  }
 
   clearInterval(screensaverInterval);
   resetIdleTimer();
