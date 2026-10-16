@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>OpenFamily - Smart Family Dashboard</title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/style.css?v=2.9.1">
+  <link rel="stylesheet" href="/style.css?v=3.0.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -149,63 +149,72 @@
       </div>
     </header>
 
-    <!-- CUERPO PRINCIPAL (GRID 3 COLUMNAS PARA EL MARCO 1280x800) -->
+    <!-- CUERPO PRINCIPAL (PANTALLAS GRANDES MANEJABLES CON BARRA INFERIOR) -->
     <main class="main-grid" id="main-grid" data-mobile-view="calendar">
 
-      <!-- COLUMNA 1: 📅 CALENDARIOS FAMILIARES -->
+      <!-- PANTALLA 1: 📅 AGENDA FAMILIAR AMPLIA (CALENDARIO MENSUAL + LISTA DE EVENTOS) -->
       <section class="grid-card calendar-card">
-        <div class="card-header">
+        <div class="card-header screen-top-bar">
           <div class="title-with-icon">
             <span class="icon">📅</span>
             <h2>Agenda Familiar</h2>
           </div>
-          <button class="card-btn-add" onclick="openAddEventModal()">+ Evento</button>
+          <!-- Filtros rápidos por miembro con nombre completo -->
+          <div class="member-pills-bar" id="calendar-member-filters">
+            <button class="filter-pill active" onclick="filterCalendar('all')">Todos</button>
+          </div>
+          <button class="btn-primary screen-action-btn" onclick="openAddEventModal()">+ Nuevo Evento</button>
         </div>
 
-        <!-- Filtros rápidos por miembro -->
-        <div class="member-pills-bar" id="calendar-member-filters">
-          <button class="filter-pill active" onclick="filterCalendar('all')">Todos</button>
-        </div>
+        <div class="calendar-split-body">
+          <!-- Calendario mensual integrado a la izquierda -->
+          <div class="inline-month-panel">
+            <div class="month-header">
+              <button class="month-nav-btn" onclick="changeMonth(-1)">◀</button>
+              <h3 id="inline-month-title" class="month-title">Mes Año</h3>
+              <button class="month-nav-btn" onclick="changeMonth(1)">▶</button>
+            </div>
+            <div class="month-days-grid" id="inline-month-days-grid"></div>
+            <div id="inline-day-filter-bar" class="inline-day-filter-bar hidden">
+              <span id="inline-day-filter-label">Día seleccionado</span>
+              <button class="btn-secondary" style="padding:4px 10px; font-size:0.78rem;" onclick="clearInlineDayFilter()">Ver todos</button>
+            </div>
+          </div>
 
-        <!-- Lista de eventos organizada por días (Hoy, Mañana, Próximos) -->
-        <div class="events-scroll-list" id="events-list">
-          <!-- Renderizado dinámicamente -->
+          <!-- Lista grande de eventos a la derecha -->
+          <div class="events-scroll-list" id="events-list">
+            <!-- Renderizado dinámicamente -->
+          </div>
         </div>
       </section>
 
-      <!-- COLUMNA 2: ⭐ TAREAS DE CADA MIEMBRO & PUNTOS (GAMIFICACIÓN) -->
+      <!-- PANTALLA 2: ⭐ TAREAS & OBJETIVOS A PANTALLA COMPLETA -->
       <section class="grid-card tasks-card">
-        <div class="card-header">
+        <div class="card-header screen-top-bar">
           <div class="title-with-icon">
             <span class="icon">⭐</span>
             <h2>Tareas & Objetivos</h2>
           </div>
-          <!-- Selector de miembro para ver sus tareas -->
+          <!-- Tarjetas grandes de miembros con sus puntos -->
           <div class="member-selector" id="task-member-tabs">
             <!-- Tabs dinámicas de miembros -->
           </div>
+          <button class="btn-primary screen-action-btn" onclick="handleAddTaskProtected(activeMemberId)">🔒 + Añadir Tarea</button>
         </div>
 
-        <!-- Tarjeta de progreso del miembro seleccionado -->
-        <div class="member-progress-banner" id="member-progress-banner">
-          <!-- Renderizado dinámico (puntos, avatar, nivel, racha) -->
-        </div>
+        <!-- Banner compacto para móvil -->
+        <div class="member-progress-banner hidden" id="member-progress-banner"></div>
 
-        <!-- Botón Añadir Tarea idéntico a Añadir Premio -->
-        <div class="pane-header-info" style="display: flex; margin: 6px 0 10px 0;">
-          <button class="btn-secondary" onclick="handleAddTaskProtected(activeMemberId)" style="width: 100%; padding: 6px 12px; font-size: 0.85rem; font-weight: 700;">+ Añadir Tarea</button>
-        </div>
-
-        <!-- Lista táctil de tareas del día -->
+        <!-- Cuadrícula grande de 2 columnas para las tareas -->
         <div class="tasks-scroll-list" id="tasks-list">
           <!-- Tareas dinámicas con botón táctil grande -->
         </div>
       </section>
 
-      <!-- COLUMNA 3: 🎁 TIENDA DE RECOMPENSAS + MENÚ + COMPRA + CÁMARAS + CORCHO -->
+      <!-- PANTALLAS 3, 4, 5, 6: PREMIOS, MENÚ SEMANAL, COMPRA Y FOTOS -->
       <section class="grid-card right-panel-card">
-        <!-- Pestañas para alternar entre Recompensas, Menú, Compra y Cámaras -->
-        <div class="panel-nav-tabs">
+        <!-- Pestañas ocultas en modo dock (se controla desde la barra inferior) -->
+        <div class="panel-nav-tabs hidden">
           <button class="panel-tab active" onclick="switchRightTab('rewards')">🎁 Premios</button>
           <button class="panel-tab" onclick="switchRightTab('menu')">🍽️ Menú</button>
           <button class="panel-tab" onclick="switchRightTab('shopping')">🍎 Compra</button>
@@ -214,71 +223,77 @@
           <button class="panel-tab" onclick="switchRightTab('cameras')">📹 Cámaras</button>
         </div>
 
-        <!-- TAB 1: TIENDA DE RECOMPENSAS -->
+        <!-- TAB 1: TIENDA DE RECOMPENSAS A PANTALLA COMPLETA -->
         <div id="tab-content-rewards" class="tab-pane active">
-          <div class="pane-header-info" style="display: flex; margin: 6px 0 10px 0;">
-            <button class="btn-secondary" onclick="handleAddRewardProtected()" style="width: 100%; padding: 6px 12px; font-size: 0.85rem; font-weight: 700;">+ Añadir Premio</button>
+          <div class="card-header screen-top-bar">
+            <div class="title-with-icon">
+              <span class="icon">🎁</span>
+              <h2>Catálogo de Premios</h2>
+            </div>
+            <div class="member-selector" id="rewards-member-tabs"></div>
+            <button class="btn-primary screen-action-btn" onclick="handleAddRewardProtected()">🔒 + Añadir Premio</button>
           </div>
           <div class="rewards-grid" id="rewards-grid">
-            <!-- Premios dinámicos -->
+            <!-- Premios dinámicos en 3 columnas -->
           </div>
         </div>
 
-        <!-- TAB 2: MENÚ SEMANAL DE COMIDAS -->
+        <!-- TAB 2: MENÚ SEMANAL DE COMIDAS (7 DÍAS EN PIZARRA) -->
         <div id="tab-content-menu" class="tab-pane hidden">
-          <div class="pane-header-info">
-            <span id="menu-today-badge" class="badge-pill">Hoy toca:</span>
-          </div>
-          <div class="today-menu-box" id="today-menu-box">
-            <!-- Menú de hoy -->
+          <div class="card-header screen-top-bar">
+            <div class="title-with-icon">
+              <span class="icon">🍽️</span>
+              <h2>Menú Semanal Familiar</h2>
+            </div>
+            <div id="today-menu-box" class="today-menu-inline"></div>
           </div>
           <div class="weekly-menu-list" id="weekly-menu-list">
-            <!-- Lista de la semana entera -->
+            <!-- Los 7 días de la semana en cuadrícula amplia -->
           </div>
         </div>
 
         <!-- TAB 3: LISTA DE LA COMPRA INTERACTIVA -->
         <div id="tab-content-shopping" class="tab-pane hidden">
-          <div class="shopping-input-row">
-            <input type="text" id="new-shopping-item" placeholder="Añadir producto (ej. Leche, Fruta)..." onkeydown="if(event.key==='Enter')addShoppingItem()">
-            <button class="btn-primary" onclick="addShoppingItem()">Añadir</button>
+          <div class="card-header screen-top-bar">
+            <div class="title-with-icon">
+              <span class="icon">🍎</span>
+              <h2>Lista de la Compra</h2>
+            </div>
+            <div class="shopping-input-row" style="flex:1; max-width:520px; margin:0;">
+              <input type="text" id="new-shopping-item" placeholder="Añadir producto (ej. Leche, Pan, Fruta)..." onkeydown="if(event.key==='Enter')addShoppingItem()">
+              <button class="btn-primary" onclick="addShoppingItem()">+ Añadir</button>
+            </div>
+            <button class="btn-clear-checked" style="width:auto; padding:10px 16px;" onclick="clearCheckedShopping()">🗑️ Limpiar comprados</button>
           </div>
           <div class="shopping-scroll-list" id="shopping-list">
-            <!-- Items de la compra -->
-          </div>
-          <div class="shopping-actions">
-            <button class="btn-clear-checked" onclick="clearCheckedShopping()">Limpiar comprados</button>
+            <!-- Items de la compra en cuadrícula de 3 columnas -->
           </div>
         </div>
 
         <!-- TAB 4: TABLÓN DE ANUNCIOS (CORCHO FAMILIAR) -->
         <div id="tab-content-notes" class="tab-pane hidden">
-          <div class="cork-board" id="cork-board">
-            <!-- Post-its amarillos/naranjas con chincheta -->
-          </div>
+          <div class="cork-board" id="cork-board"></div>
           <button class="btn-secondary full-width" onclick="openAddNoteModal()">+ Dejar Nota en el Corcho</button>
         </div>
 
         <!-- TAB 5: CÁMARAS TAPO -->
         <div id="tab-content-cameras" class="tab-pane hidden">
-          <div class="cameras-grid" id="cameras-grid">
-            <!-- Tarjetas de cámaras Tapo con clic para pantalla completa -->
-          </div>
+          <div class="cameras-grid" id="cameras-grid"></div>
         </div>
 
         <!-- TAB 6: FOTOS DEL MARCO (SUBIR Y GESTIONAR) -->
         <div id="tab-content-photos" class="tab-pane hidden">
-          <div class="photos-panel-header">
-            <div class="photos-header-info">
-              <h3>📸 Fotos del Marco</h3>
-              <p class="subtext">Sube fotos familiares. Se mostrarán automáticamente en el marco cuando nadie lo use.</p>
+          <div class="card-header screen-top-bar">
+            <div class="title-with-icon">
+              <span class="icon">📸</span>
+              <h2>Fotos del Marco Familiar</h2>
             </div>
             <div class="photos-actions-row">
-              <label class="btn-primary upload-photo-btn" title="Subir fotos desde el teléfono o PC">
+              <label class="btn-primary upload-photo-btn" style="padding:10px 18px; border-radius:12px;" title="Subir fotos desde el teléfono o PC">
                 <span>📤 Subir Fotos</span>
                 <input type="file" id="photo-file-input" accept="image/*" multiple onchange="handlePhotoUpload(event)" style="display: none;">
               </label>
-              <button class="btn-secondary" onclick="startScreensaver()">▶ Ver Ahora</button>
+              <button class="btn-secondary" style="padding:10px 18px; border-radius:12px;" onclick="startScreensaver(event)">▶ Iniciar Presentación</button>
             </div>
           </div>
           <div class="photos-upload-progress hidden" id="photos-upload-progress">
@@ -293,31 +308,31 @@
 
     </main>
 
-    <!-- BARRA DE NAVEGACIÓN INFERIOR PARA MÓVILES (PWA) -->
-    <nav id="mobile-bottom-nav" class="mobile-bottom-nav">
+    <!-- BARRA DE NAVEGACIÓN INFERIOR GRANDE Y MANEJABLE (TABLET + MÓVIL) -->
+    <nav id="mobile-bottom-nav" class="bottom-dock-nav">
       <button class="mobile-nav-btn active" id="mob-nav-calendar" onclick="switchMobileView('calendar')">
         <span class="mob-icon">📅</span>
-        <span class="mob-label">Agenda</span>
+        <span class="mob-label">Agenda Familiar</span>
       </button>
       <button class="mobile-nav-btn" id="mob-nav-tasks" onclick="switchMobileView('tasks')">
         <span class="mob-icon">⭐</span>
         <span class="mob-label">Tareas</span>
       </button>
+      <button class="mobile-nav-btn" id="mob-nav-rewards" onclick="switchMobileView('rewards')">
+        <span class="mob-icon">🎁</span>
+        <span class="mob-label">Premios</span>
+      </button>
+      <button class="mobile-nav-btn" id="mob-nav-menu" onclick="switchMobileView('menu')">
+        <span class="mob-icon">🍽️</span>
+        <span class="mob-label">Menú Semanal</span>
+      </button>
       <button class="mobile-nav-btn" id="mob-nav-shopping" onclick="switchMobileView('shopping')">
         <span class="mob-icon">🍎</span>
         <span class="mob-label">Compra</span>
       </button>
-      <button class="mobile-nav-btn" id="mob-nav-menu" onclick="switchMobileView('menu')">
-        <span class="mob-icon">🍽️</span>
-        <span class="mob-label">Menú</span>
-      </button>
       <button class="mobile-nav-btn" id="mob-nav-photos" onclick="switchMobileView('photos')">
         <span class="mob-icon">📸</span>
         <span class="mob-label">Fotos</span>
-      </button>
-      <button class="mobile-nav-btn" id="mob-nav-more" onclick="switchMobileView('more')">
-        <span class="mob-icon">📌</span>
-        <span class="mob-label">Corcho</span>
       </button>
     </nav>
   </div>

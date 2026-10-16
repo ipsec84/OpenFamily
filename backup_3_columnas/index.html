@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>OpenFamily - Smart Family Dashboard</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/style.css?v=2.9.1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="theme-dark">
+
+  <!-- PANTALLA DE ACCESO Y SEGURIDAD PADRES (PIN DE ACCESO) -->
+  <div id="parent-auth-overlay" class="parent-auth-overlay hidden">
+    <div class="parent-auth-card">
+      <div class="parent-auth-header">
+        <div class="parent-auth-icon">🔒</div>
+        <h2>FamilyHub</h2>
+        <p class="parent-auth-subtitle">Acceso Padres & Familia</p>
+        <p class="parent-auth-desc">Introduce el PIN de Padres para acceder al panel familiar</p>
+      </div>
+
+      <!-- Indicadores de dígitos del PIN -->
+      <div class="pin-display" id="pin-display">
+        <span class="pin-dot"></span>
+        <span class="pin-dot"></span>
+        <span class="pin-dot"></span>
+        <span class="pin-dot"></span>
+      </div>
+
+      <div id="pin-error-msg" class="pin-error-msg hidden"></div>
+
+      <!-- Teclado Numérico Táctil Especial Móvil -->
+      <div class="pin-keypad">
+        <button class="pin-key" onclick="pressPinKey('1')">1</button>
+        <button class="pin-key" onclick="pressPinKey('2')">2</button>
+        <button class="pin-key" onclick="pressPinKey('3')">3</button>
+        <button class="pin-key" onclick="pressPinKey('4')">4</button>
+        <button class="pin-key" onclick="pressPinKey('5')">5</button>
+        <button class="pin-key" onclick="pressPinKey('6')">6</button>
+        <button class="pin-key" onclick="pressPinKey('7')">7</button>
+        <button class="pin-key" onclick="pressPinKey('8')">8</button>
+        <button class="pin-key" onclick="pressPinKey('9')">9</button>
+        <button class="pin-key pin-key-action" onclick="clearPinKey()">⌫</button>
+        <button class="pin-key" onclick="pressPinKey('0')">0</button>
+        <button class="pin-key pin-key-action pin-key-submit" onclick="submitPin()">↵</button>
+      </div>
+
+      <label class="remember-device-label">
+        <input type="checkbox" id="remember-pin-device" checked>
+        <span>Recordar este teléfono (180 días)</span>
+      </label>
+
+      <div class="auth-kiosk-link" onclick="activateKioskMode()">
+        🖥️ ¿Es la pantalla física del marco? Pulsa aquí
+      </div>
+    </div>
+  </div>
+
+  <!-- SALVAPANTALLAS / MARCO DE FOTOS EN PANTALLA COMPLETA -->
+  <div id="screensaver-overlay" class="screensaver-overlay hidden" onclick="stopScreensaver(event)">
+    <div class="screensaver-ambient" id="screensaver-ambient"></div>
+    <div class="screensaver-slide-container">
+      <img id="screensaver-img-1" class="screensaver-img active" alt="Foto familiar" src="">
+      <img id="screensaver-img-2" class="screensaver-img" alt="Foto familiar" src="">
+    </div>
+    <!-- Reloj y clima en esquina inferior (fotos 100% limpias) -->
+    <div class="screensaver-hud">
+      <div class="hud-time" id="screensaver-clock">12:00</div>
+      <div class="hud-date" id="screensaver-date">Hoy</div>
+      <div class="hud-weather" id="screensaver-weather">📍 Tiempo • 20° ☀️</div>
+    </div>
+    <div class="screensaver-exit-hint">Toca cualquier punto para volver al panel</div>
+  </div>
+
+
+
+  <!-- AVISO DE EMERGENCIA / ALARMA A CENAR CON POSPONER -->
+  <div id="alarm-banner" class="alarm-banner hidden">
+    <div class="alarm-content">
+      <div class="alarm-icon">🔔</div>
+      <div class="alarm-text">
+        <h2 id="alarm-title">¡A CENAR!</h2>
+        <p id="alarm-message">¡Todos a la mesa en familia!</p>
+      </div>
+      <button class="alarm-close-btn" onclick="dismissAlarm()">¡Voy ya!</button>
+      <div class="alarm-snooze-row">
+        <span class="snooze-title">O posponer aviso:</span>
+        <div class="snooze-btns">
+          <button class="snooze-btn" onclick="snoozeAlarm(5)">⏱️ +5 min</button>
+          <button class="snooze-btn" onclick="snoozeAlarm(10)">⏱️ +10 min</button>
+          <button class="snooze-btn" onclick="snoozeAlarm(15)">⏱️ +15 min</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <div class="app-container">
+
+    <!-- CABECERA SUPERIOR (Reloj, Clima, Acciones) -->
+    <header class="top-header">
+      <div class="header-left">
+        <div class="clock-block">
+          <span id="clock-time" class="clock-time">15:30</span>
+          <span id="clock-seconds" class="clock-seconds">:00</span>
+        </div>
+        <div id="clock-date" class="clock-date" onclick="openMonthCalendarModal()" title="Toca para ver el calendario mensual">
+          Miércoles, 14 de Octubre 📅
+        </div>
+      </div>
+
+      <!-- WIDGET CLIMA CON PREVISIÓN SEMANAL -->
+      <div class="header-center weather-card" onclick="toggleWeatherWeek()" title="Toca para ver la previsión de 7 días">
+        <div class="weather-current">
+          <span id="weather-icon" class="weather-icon">⛅</span>
+          <div class="weather-info">
+            <div class="temp-row">
+              <span id="weather-temp" class="weather-temp">19°</span>
+              <span id="weather-desc" class="weather-desc">Parcialmente nublado</span>
+            </div>
+            <div class="weather-details">
+              <span class="weather-loc-tag" id="weather-loc-name">📍 Tiempo</span>
+              <span>Hum: <b id="weather-hum">60%</b></span>
+              <span>Viento: <b id="weather-wind">8 km/h</b></span>
+              <span class="forecast-toggle-hint">▾ Previsión</span>
+            </div>
+          </div>
+        </div>
+        <!-- Desplegable Horas + 7 días -->
+        <div id="weather-week" class="weather-week hidden" onclick="event.stopPropagation()"></div>
+      </div>
+
+      <!-- BOTONES DE ACCIÓN RÁPIDA -->
+      <div class="header-right">
+        <button class="action-pill bell-btn" onclick="triggerDinnerCall()" title="Llamar a todos a la mesa">
+          <span>🔔</span> A Cenar
+        </button>
+        <button class="action-pill photos-btn" onclick="startScreensaver(event)" title="Ver fotos familiares en pantalla completa">
+          <span>🖼️</span> Fotos
+        </button>
+        <button class="action-pill admin-btn" onclick="openAdminModal()" title="Panel de Padres y Ajustes">
+          <span>⚙️</span> Padres
+        </button>
+      </div>
+    </header>
+
+    <!-- CUERPO PRINCIPAL (GRID 3 COLUMNAS PARA EL MARCO 1280x800) -->
+    <main class="main-grid" id="main-grid" data-mobile-view="calendar">
+
+      <!-- COLUMNA 1: 📅 CALENDARIOS FAMILIARES -->
+      <section class="grid-card calendar-card">
+        <div class="card-header">
+          <div class="title-with-icon">
+            <span class="icon">📅</span>
+            <h2>Agenda Familiar</h2>
+          </div>
+          <button class="card-btn-add" onclick="openAddEventModal()">+ Evento</button>
+        </div>
+
+        <!-- Filtros rápidos por miembro -->
+        <div class="member-pills-bar" id="calendar-member-filters">
+          <button class="filter-pill active" onclick="filterCalendar('all')">Todos</button>
+        </div>
+
+        <!-- Lista de eventos organizada por días (Hoy, Mañana, Próximos) -->
+        <div class="events-scroll-list" id="events-list">
+          <!-- Renderizado dinámicamente -->
+        </div>
+      </section>
+
+      <!-- COLUMNA 2: ⭐ TAREAS DE CADA MIEMBRO & PUNTOS (GAMIFICACIÓN) -->
+      <section class="grid-card tasks-card">
+        <div class="card-header">
+          <div class="title-with-icon">
+            <span class="icon">⭐</span>
+            <h2>Tareas & Objetivos</h2>
+          </div>
+          <!-- Selector de miembro para ver sus tareas -->
+          <div class="member-selector" id="task-member-tabs">
+            <!-- Tabs dinámicas de miembros -->
+          </div>
+        </div>
+
+        <!-- Tarjeta de progreso del miembro seleccionado -->
+        <div class="member-progress-banner" id="member-progress-banner">
+          <!-- Renderizado dinámico (puntos, avatar, nivel, racha) -->
+        </div>
+
+        <!-- Botón Añadir Tarea idéntico a Añadir Premio -->
+        <div class="pane-header-info" style="display: flex; margin: 6px 0 10px 0;">
+          <button class="btn-secondary" onclick="handleAddTaskProtected(activeMemberId)" style="width: 100%; padding: 6px 12px; font-size: 0.85rem; font-weight: 700;">+ Añadir Tarea</button>
+        </div>
+
+        <!-- Lista táctil de tareas del día -->
+        <div class="tasks-scroll-list" id="tasks-list">
+          <!-- Tareas dinámicas con botón táctil grande -->
+        </div>
+      </section>
+
+      <!-- COLUMNA 3: 🎁 TIENDA DE RECOMPENSAS + MENÚ + COMPRA + CÁMARAS + CORCHO -->
+      <section class="grid-card right-panel-card">
+        <!-- Pestañas para alternar entre Recompensas, Menú, Compra y Cámaras -->
+        <div class="panel-nav-tabs">
+          <button class="panel-tab active" onclick="switchRightTab('rewards')">🎁 Premios</button>
+          <button class="panel-tab" onclick="switchRightTab('menu')">🍽️ Menú</button>
+          <button class="panel-tab" onclick="switchRightTab('shopping')">🍎 Compra</button>
+          <button class="panel-tab" onclick="switchRightTab('photos')">📸 Fotos</button>
+          <button class="panel-tab" onclick="switchRightTab('notes')">📌 Corcho</button>
+          <button class="panel-tab" onclick="switchRightTab('cameras')">📹 Cámaras</button>
+        </div>
+
+        <!-- TAB 1: TIENDA DE RECOMPENSAS -->
+        <div id="tab-content-rewards" class="tab-pane active">
+          <div class="pane-header-info" style="display: flex; margin: 6px 0 10px 0;">
+            <button class="btn-secondary" onclick="handleAddRewardProtected()" style="width: 100%; padding: 6px 12px; font-size: 0.85rem; font-weight: 700;">+ Añadir Premio</button>
+          </div>
+          <div class="rewards-grid" id="rewards-grid">
+            <!-- Premios dinámicos -->
+          </div>
+        </div>
+
+        <!-- TAB 2: MENÚ SEMANAL DE COMIDAS -->
+        <div id="tab-content-menu" class="tab-pane hidden">
+          <div class="pane-header-info">
+            <span id="menu-today-badge" class="badge-pill">Hoy toca:</span>
+          </div>
+          <div class="today-menu-box" id="today-menu-box">
+            <!-- Menú de hoy -->
+          </div>
+          <div class="weekly-menu-list" id="weekly-menu-list">
+            <!-- Lista de la semana entera -->
+          </div>
+        </div>
+
+        <!-- TAB 3: LISTA DE LA COMPRA INTERACTIVA -->
+        <div id="tab-content-shopping" class="tab-pane hidden">
+          <div class="shopping-input-row">
+            <input type="text" id="new-shopping-item" placeholder="Añadir producto (ej. Leche, Fruta)..." onkeydown="if(event.key==='Enter')addShoppingItem()">
+            <button class="btn-primary" onclick="addShoppingItem()">Añadir</button>
+          </div>
+          <div class="shopping-scroll-list" id="shopping-list">
+            <!-- Items de la compra -->
+          </div>
+          <div class="shopping-actions">
+            <button class="btn-clear-checked" onclick="clearCheckedShopping()">Limpiar comprados</button>
+          </div>
+        </div>
+
+        <!-- TAB 4: TABLÓN DE ANUNCIOS (CORCHO FAMILIAR) -->
+        <div id="tab-content-notes" class="tab-pane hidden">
+          <div class="cork-board" id="cork-board">
+            <!-- Post-its amarillos/naranjas con chincheta -->
+          </div>
+          <button class="btn-secondary full-width" onclick="openAddNoteModal()">+ Dejar Nota en el Corcho</button>
+        </div>
+
+        <!-- TAB 5: CÁMARAS TAPO -->
+        <div id="tab-content-cameras" class="tab-pane hidden">
+          <div class="cameras-grid" id="cameras-grid">
+            <!-- Tarjetas de cámaras Tapo con clic para pantalla completa -->
+          </div>
+        </div>
+
+        <!-- TAB 6: FOTOS DEL MARCO (SUBIR Y GESTIONAR) -->
+        <div id="tab-content-photos" class="tab-pane hidden">
+          <div class="photos-panel-header">
+            <div class="photos-header-info">
+              <h3>📸 Fotos del Marco</h3>
+              <p class="subtext">Sube fotos familiares. Se mostrarán automáticamente en el marco cuando nadie lo use.</p>
+            </div>
+            <div class="photos-actions-row">
+              <label class="btn-primary upload-photo-btn" title="Subir fotos desde el teléfono o PC">
+                <span>📤 Subir Fotos</span>
+                <input type="file" id="photo-file-input" accept="image/*" multiple onchange="handlePhotoUpload(event)" style="display: none;">
+              </label>
+              <button class="btn-secondary" onclick="startScreensaver()">▶ Ver Ahora</button>
+            </div>
+          </div>
+          <div class="photos-upload-progress hidden" id="photos-upload-progress">
+            <span>⏳ Subiendo fotos al marco...</span>
+          </div>
+          <div class="photos-grid" id="photos-grid">
+            <!-- Grid de fotos con miniaturas y botón de borrar -->
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- BARRA DE NAVEGACIÓN INFERIOR PARA MÓVILES (PWA) -->
+    <nav id="mobile-bottom-nav" class="mobile-bottom-nav">
+      <button class="mobile-nav-btn active" id="mob-nav-calendar" onclick="switchMobileView('calendar')">
+        <span class="mob-icon">📅</span>
+        <span class="mob-label">Agenda</span>
+      </button>
+      <button class="mobile-nav-btn" id="mob-nav-tasks" onclick="switchMobileView('tasks')">
+        <span class="mob-icon">⭐</span>
+        <span class="mob-label">Tareas</span>
+      </button>
+      <button class="mobile-nav-btn" id="mob-nav-shopping" onclick="switchMobileView('shopping')">
+        <span class="mob-icon">🍎</span>
+        <span class="mob-label">Compra</span>
+      </button>
+      <button class="mobile-nav-btn" id="mob-nav-menu" onclick="switchMobileView('menu')">
+        <span class="mob-icon">🍽️</span>
+        <span class="mob-label">Menú</span>
+      </button>
+      <button class="mobile-nav-btn" id="mob-nav-photos" onclick="switchMobileView('photos')">
+        <span class="mob-icon">📸</span>
+        <span class="mob-label">Fotos</span>
+      </button>
+      <button class="mobile-nav-btn" id="mob-nav-more" onclick="switchMobileView('more')">
+        <span class="mob-icon">📌</span>
+        <span class="mob-label">Corcho</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- MODAL VISOR DE CÁMARA TAPO EN PANTALLA COMPLETA -->
+  <div id="camera-modal" class="modal-overlay hidden" onclick="closeCameraModal()">
+    <div class="camera-modal-card" onclick="event.stopPropagation()">
+      <div class="camera-modal-header">
+        <h3 id="camera-modal-title">Cámara Tapo</h3>
+        <button class="modal-close" onclick="closeCameraModal()">✕</button>
+      </div>
+      <div class="camera-modal-body">
+        <div class="camera-stream-wrapper">
+          <img id="camera-full-img" src="" alt="Stream Cámara Tapo" class="camera-full-img">
+          <div class="camera-live-badge">● EN DIRECTO</div>
+        </div>
+        <p class="camera-hint">Transmisión RTSP local de la red doméstica</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE ADMINISTRACIÓN Y CONTROL REMOTO (PADRES Y ADMIN) -->
+  <div id="admin-modal" class="modal-overlay hidden">
+    <div class="admin-modal-card">
+      <div class="modal-header">
+        <div class="admin-header-title">
+          <span>⚙️</span>
+          <h3>Panel de Padres & Administración</h3>
+        </div>
+        <button class="modal-close" onclick="closeAdminModal()">✕</button>
+      </div>
+
+      <!-- Pantalla de Login si no está autenticado -->
+      <div id="admin-login-view" class="admin-section">
+        <p class="admin-desc">Introduce la contraseña de Administrador o el PIN de Padres:</p>
+        <div class="pin-login-box">
+          <input type="password" id="admin-password-input" placeholder="Contraseña o PIN (1234)" autofocus onkeydown="if(event.key==='Enter')submitAdminLogin()">
+          <button class="btn-primary" onclick="submitAdminLogin()">Entrar</button>
+        </div>
+        <p id="admin-login-error" class="login-error hidden">Contraseña incorrecta</p>
+      </div>
+
+      <!-- Contenido del Panel Admin (Solo visible logueado) -->
+      <div id="admin-panel-view" class="admin-section hidden">
+        <div class="admin-tabs-nav">
+          <button class="admin-tab-btn active" onclick="switchAdminTab('remote')">📡 Control OTA</button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('photos')">🖼️ Fotos Marco</button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('members')">👨‍👩‍👧‍👦 Familia</button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('rewards')">🎁 Premios</button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('menu')">🍽️ Menú</button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('cameras')">📹 Tapo</button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('settings')">⚙️ Ajustes</button>
+        </div>
+
+        <!-- ADMIN TAB 1: CONTROL REMOTO Y OTA DEL MARCO -->
+        <div id="admin-subtab-remote" class="admin-tab-pane active">
+          <h4>📡 Control Remoto del Marco Kiosco</h4>
+          <p class="admin-desc">Controla la pantalla del marco en tiempo real sin tocarla físicamente:</p>
+
+          <div class="remote-action-grid">
+            <button class="remote-btn" onclick="remoteOtaReload()">
+              <span class="icon">🔄</span>
+              <b>Actualizar Pantalla (OTA)</b>
+              <small>Recarga la interfaz en el marco inmediatamente</small>
+            </button>
+            <button class="remote-btn" onclick="remoteDinnerCall()">
+              <span class="icon">🔔</span>
+              <b>Hacer Sonar Campana</b>
+              <small>Envía aviso "¡A Cenar!" con sonido al salón</small>
+            </button>
+
+            <button class="remote-btn" onclick="openDeviceWifiSettings()">
+              <span class="icon">📶</span>
+              <b>Configurar Wi-Fi</b>
+              <small>Abre el selector de redes Wi-Fi en el marco</small>
+            </button>
+          </div>
+
+          <div class="remote-msg-box">
+            <h5>📢 Enviar Mensaje Emergente al Marco:</h5>
+            <div class="msg-input-row">
+              <input type="text" id="remote-custom-msg" placeholder="Ej: ¡Ya salimos de camino a casa!">
+              <button class="btn-primary" onclick="sendRemoteMessage()">Enviar a Pantalla</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN TAB: FOTOS Y MARCO DIGITAL -->
+        <div id="admin-subtab-photos" class="admin-tab-pane hidden">
+          <div class="admin-photos-header">
+            <h4>🖼️ Gestor de Fotos del Marco Digital</h4>
+            <p class="admin-desc">Sube fotos desde la galería de tu móvil o las carpetas de tu ordenador para que roten en el marco:</p>
+          </div>
+
+          <!-- Selector táctil móvil/PC -->
+          <div class="admin-photo-upload-card">
+            <div class="upload-icon-circle">📸</div>
+            <div class="upload-texts">
+              <b>Subir fotos al marco digital</b>
+              <small>Puedes seleccionar una o varias fotos a la vez (desde la galería del móvil o carpeta del PC)</small>
+            </div>
+            <div class="upload-buttons-row">
+              <label class="btn-primary upload-btn-label">
+                <span>📁 Abrir Galería / Carpeta</span>
+                <input type="file" id="admin-photo-file-input" accept="image/*" multiple onchange="handleAdminPhotoSelected(event)" style="display:none;">
+              </label>
+              <button class="btn-secondary" type="button" onclick="startScreensaver()">
+                ▶️ Probar Marco
+              </button>
+            </div>
+          </div>
+
+          <!-- Previsualización de fotos pendientes de subida -->
+          <div id="admin-photos-pending-box" class="admin-pending-upload-box hidden">
+            <div class="pending-header">
+              <span id="admin-pending-count-text">3 fotos seleccionadas</span>
+              <button class="btn-primary" id="btn-admin-do-upload" onclick="uploadAdminPendingPhotos()">🚀 Subir al Marco Ahora</button>
+              <button class="btn-secondary" onclick="cancelAdminPendingPhotos()">Cancelar</button>
+            </div>
+            <div class="pending-thumbnails-grid" id="admin-pending-thumbnails"></div>
+            <div id="admin-upload-status-bar" class="upload-status-bar hidden"></div>
+          </div>
+
+          <!-- Galería de fotos activas en el marco -->
+          <div class="admin-active-photos-wrap">
+            <div class="active-photos-title-row">
+              <h5>Fotos activas en la pantalla (<span id="admin-total-photos-count">0</span>)</h5>
+            </div>
+            <div class="admin-photos-gallery-grid" id="admin-photos-gallery-grid">
+              <!-- Renderizado dinámico -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN TAB 2: MIEMBROS Y CALENDARIOS GOOGLE -->
+        <div id="admin-subtab-members" class="admin-tab-pane hidden">
+          <h4>Configuración de los 4 Miembros y Google Calendar</h4>
+          <p class="admin-desc">Personaliza nombres, avatares y pega las URLs secretas iCal de Google Calendar:</p>
+          <div id="admin-members-list" class="admin-members-grid"></div>
+        </div>
+
+        <!-- ADMIN TAB 3: GESTIÓN DE PREMIOS -->
+        <div id="admin-subtab-rewards" class="admin-tab-pane hidden">
+          <h4>Catálogo de Premios</h4>
+          <div class="add-reward-card-form">
+            <div class="add-reward-fields">
+              <input type="text" id="new-reward-title" placeholder="Título (ej. Salir con la bicicleta, 1h consola...)">
+              <input type="number" id="new-reward-cost" placeholder="Puntos (ej. 40)" style="max-width: 130px;">
+              <input type="text" id="new-reward-icon" value="🚲" placeholder="Icono" style="max-width: 70px; text-align: center; font-size: 1.25rem;">
+              <button class="btn-primary" onclick="createReward()">Añadir Premio</button>
+            </div>
+            <div class="emoji-picker-wrap">
+              <span class="emoji-picker-label">Elige un icono rápido:</span>
+              <div class="emoji-picker-grid" id="admin-reward-emoji-picker"></div>
+            </div>
+          </div>
+          <div id="admin-rewards-list" class="admin-list-group"></div>
+        </div>
+
+        <!-- ADMIN TAB 4: PLANIFICADOR DE MENÚ -->
+        <div id="admin-subtab-menu" class="admin-tab-pane hidden">
+          <h4>Planificador del Menú Semanal</h4>
+          <div id="admin-menu-editor" class="admin-menu-grid"></div>
+        </div>
+
+        <!-- ADMIN TAB 5: CÁMARAS TAPO -->
+        <div id="admin-subtab-cameras" class="admin-tab-pane hidden">
+          <h4>Cámaras TP-Link Tapo</h4>
+          <div class="add-camera-form">
+            <input type="text" id="new-cam-name" placeholder="Nombre (ej. Salón)">
+            <input type="text" id="new-cam-ip" placeholder="IP local (ej. 192.168.1.50)">
+            <input type="text" id="new-cam-rtsp" placeholder="URL RTSP (rtsp://user:pass@IP:554/stream2)">
+            <button class="btn-primary" onclick="createCamera()">Guardar Cámara</button>
+          </div>
+          <div id="admin-cameras-list" class="admin-list-group"></div>
+        </div>
+
+        <!-- ADMIN TAB 6: AJUSTES -->
+        <div id="admin-subtab-settings" class="admin-tab-pane hidden">
+          <h4>Ajustes Generales del Sistema</h4>
+          <div class="settings-form">
+            <div class="row-two">
+              <label>PIN de Acceso Rápido Padres:
+                <input type="text" id="setting-parent-pin" maxlength="8" placeholder="1234">
+              </label>
+              <label>Salvapantallas Fotos (minutos inactivo):
+                <input type="number" id="setting-screensaver-timeout" min="1" max="120" value="3">
+              </label>
+            </div>
+            <div class="row-two">
+              <label>Ciudad / Ubicación del Clima:
+                <input type="text" id="setting-location-name" placeholder="Ej: Madrid">
+              </label>
+              <label>Latitud / Longitud:
+                <div style="display:flex; gap:6px;">
+                  <input type="text" id="setting-latitude" placeholder="40.4168">
+                  <input type="text" id="setting-longitude" placeholder="-3.7038">
+                </div>
+              </label>
+            </div>
+            <label>URL Agenda Local / Externa (iCal):
+              <input type="text" id="setting-soto-feed" placeholder="https://...">
+            </label>
+            <button class="btn-primary" onclick="saveSettings()">Guardar Ajustes</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AÑADIR / EDITAR EVENTO DE CALENDARIO -->
+  <div id="event-modal" class="modal-overlay hidden">
+    <div class="modal-card small-modal">
+      <div class="modal-header">
+        <h3 id="event-modal-title">Añadir Evento</h3>
+        <button class="modal-close" onclick="closeModal('event-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ev-edit-id" value="">
+        <input type="hidden" id="ev-source" value="local">
+        <label>Título: <input type="text" id="ev-title" placeholder="Ej: Dentista, Fútbol, Cena..."></label>
+        <label>Para quién:
+          <select id="ev-member">
+            <!-- Rellenado dinámicamente con los miembros de la familia -->
+          </select>
+        </label>
+        <div class="row-two">
+          <label>Fecha: <input type="date" id="ev-date"></label>
+          <label id="ev-time-wrap">Hora: <input type="time" id="ev-time" value="12:00"></label>
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; margin: 6px 0; cursor:pointer;">
+          <input type="checkbox" id="ev-all-day" onchange="toggleEventAllDay(this.checked)" style="width:18px; height:18px;">
+          <span style="font-size:0.88rem;">Todo el día</span>
+        </label>
+        <label>Notas / Ubicación (opcional):
+          <input type="text" id="ev-notes" placeholder="Ej: Calle Real 5, llevar toalla...">
+        </label>
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn-primary full-width" onclick="saveEvent()">Guardar Evento</button>
+          <button id="ev-btn-delete" class="btn-danger hidden" onclick="deleteModalEvent()" style="padding:10px 14px; white-space:nowrap;">🗑️ Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AÑADIR / EDITAR TAREA -->
+  <div id="task-modal" class="modal-overlay hidden">
+    <div class="modal-card small-modal">
+      <div class="modal-header">
+        <h3 id="task-modal-title">Añadir Tarea</h3>
+        <button class="modal-close" onclick="closeModal('task-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="task-edit-id" value="">
+        <label>Título: <input type="text" id="task-title" placeholder="Ej: Hacer la cama, Leer..."></label>
+        <div class="row-two">
+          <label>Asignada a:
+            <select id="task-member">
+              <!-- Rellenado dinámicamente -->
+            </select>
+          </label>
+          <label>Puntos: <input type="number" id="task-points" value="10" min="0" max="100"></label>
+        </div>
+        <div class="row-two">
+          <label>Frecuencia:
+            <select id="task-freq">
+              <option value="daily">🔄 Todos los días (Diaria)</option>
+              <option value="once">🎯 1 día (Puntual)</option>
+            </select>
+          </label>
+          <label>Icono: <input type="text" id="task-icon" value="⭐" maxlength="4" style="text-align:center; font-size:1.2rem;"></label>
+        </div>
+        <div class="emoji-picker-wrap">
+          <span class="emoji-picker-label">Iconos rápidos para tareas:</span>
+          <div class="emoji-picker-grid" id="task-emoji-picker"></div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn-primary full-width" onclick="saveTask()">Guardar Tarea</button>
+          <button id="task-btn-delete" class="btn-danger hidden" onclick="deleteModalTask()" style="padding:10px 14px; white-space:nowrap;">🗑️ Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AÑADIR / EDITAR PREMIO -->
+  <div id="reward-modal" class="modal-overlay hidden">
+    <div class="modal-card small-modal">
+      <div class="modal-header">
+        <h3 id="reward-modal-title">Añadir Premio</h3>
+        <button class="modal-close" onclick="closeModal('reward-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="modal-reward-id" value="">
+        <label>Título del premio: <input type="text" id="modal-reward-title" placeholder="Ej: Salir con la bicicleta, 1h consola..."></label>
+        <div class="row-two">
+          <label>Puntos necesarios: <input type="number" id="modal-reward-cost" value="40" min="5" max="500"></label>
+          <label>Icono: <input type="text" id="modal-reward-icon" value="🚲" maxlength="4" style="text-align: center; font-size: 1.25rem;"></label>
+        </div>
+        <div class="emoji-picker-wrap">
+          <span class="emoji-picker-label">Elige un icono:</span>
+          <div class="emoji-picker-grid" id="modal-reward-emoji-picker"></div>
+        </div>
+        <label>Descripción (opcional): <input type="text" id="modal-reward-desc" placeholder="Ej: Tarde de cine o paseo en bici"></label>
+        <div style="display:flex; gap:10px; margin-top:14px;">
+          <button class="btn-primary full-width" onclick="saveModalReward()">Guardar Premio</button>
+          <button id="modal-reward-btn-delete" class="btn-danger hidden" onclick="deleteModalReward()" style="padding:10px 14px; white-space:nowrap;">🗑️ Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AÑADIR NOTA AL CORCHO -->
+  <div id="note-modal" class="modal-overlay hidden">
+    <div class="modal-card small-modal">
+      <div class="modal-header">
+        <h3>Dejar Nota en el Corcho</h3>
+        <button class="modal-close" onclick="closeModal('note-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Mensaje:
+          <textarea id="note-text" rows="3" placeholder="Ej: ¡Os quiero mucho! Hoy viene la abuela a merendar..."></textarea>
+        </label>
+        <div class="row-two">
+          <label>Firma: <input type="text" id="note-author" placeholder="Papá / Mamá"></label>
+          <label>Color:
+            <select id="note-color">
+              <option value="#fef08a">Amarillo 🟡</option>
+              <option value="#fed7aa">Naranja 🟠</option>
+              <option value="#bbf7d0">Verde 🟢</option>
+              <option value="#fbcfe8">Rosa 🌸</option>
+              <option value="#bae6fd">Azul 🔵</option>
+            </select>
+          </label>
+        </div>
+        <button class="btn-primary full-width" onclick="saveNote()">Fijar en el Corcho</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR MENÚ DEL DÍA (LÁPIZ) -->
+  <div id="menu-edit-modal" class="modal-overlay hidden">
+    <div class="modal-card small-modal">
+      <div class="modal-header">
+        <h3 id="menu-edit-modal-title">✏️ Modificar Menú</h3>
+        <button class="modal-close" onclick="closeModal('menu-edit-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="menu-edit-day" value="1">
+        <label>🍽️ Comida / Almuerzo:
+          <input type="text" id="menu-edit-lunch" placeholder="Ej: Lentejas caseras con arroz">
+        </label>
+        <label style="margin-top: 10px;">🌙 Cena:
+          <input type="text" id="menu-edit-dinner" placeholder="Ej: Tortilla francesa y ensalada">
+        </label>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button class="btn-primary full-width" onclick="saveMenuDay()">Guardar Menú</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR PERFIL Y FOTO DE MIEMBRO -->
+  <div id="member-modal" class="modal-overlay hidden">
+    <div class="modal-card small-modal">
+      <div class="modal-header">
+        <h3 id="member-modal-title">Editar Perfil Familiar</h3>
+        <button class="modal-close" onclick="closeModal('member-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-member-id">
+        
+        <div class="profile-photo-editor">
+          <div class="profile-photo-preview-wrap">
+            <div id="edit-member-photo-preview" class="profile-photo-circle">
+              <span id="edit-member-emoji-fallback">👤</span>
+            </div>
+          </div>
+          <div class="photo-upload-actions">
+            <button class="btn-primary" type="button" onclick="document.getElementById('edit-member-file').click()">
+              📷 Subir Foto
+            </button>
+            <input type="file" id="edit-member-file" accept="image/*" style="display:none;" onchange="handleProfilePhotoSelected(this)">
+            <small class="photo-hint">Foto de galería o cámara</small>
+          </div>
+        </div>
+
+        <label>Nombre:
+          <input type="text" id="edit-member-name" placeholder="Ej: Papá, Mamá, Álex...">
+        </label>
+
+        <div class="row-two">
+          <label>Cumpleaños:
+            <input type="date" id="edit-member-birthdate">
+          </label>
+          <label>Color distintivo:
+            <input type="color" id="edit-member-color" value="#3b82f6" style="height: 42px; padding: 2px;">
+          </label>
+        </div>
+
+        <div class="row-two">
+          <label>Icono Emoji:
+            <input type="text" id="edit-member-avatar" placeholder="👨 / 👩 / 👦 / 👧" maxlength="4">
+          </label>
+          <label>Puntos actuales:
+            <input type="number" id="edit-member-points" min="0">
+          </label>
+        </div>
+
+        <label>URL iCal de Google Calendar (opcional):
+          <input type="url" id="edit-member-ical" placeholder="https://calendar.google.com/calendar/ical/...">
+        </label>
+
+        <button class="btn-primary full-width" onclick="saveMemberProfile()">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CALENDARIO MENSUAL POPUP INTERACTIVO -->
+  <div id="calendar-month-modal" class="modal-overlay hidden" onclick="closeModal('calendar-month-modal')">
+    <div class="calendar-month-modal" onclick="event.stopPropagation()">
+      <div class="modal-header" style="padding:0 0 12px 0;">
+        <h3 id="month-title" class="month-title">Octubre 2026</h3>
+        <div style="display:flex; gap:8px;">
+          <button class="month-nav-btn" onclick="changeMonth(-1)">◀</button>
+          <button class="month-nav-btn" onclick="changeMonth(1)">▶</button>
+          <button class="modal-close" onclick="closeModal('calendar-month-modal')">✕</button>
+        </div>
+      </div>
+      <div class="month-days-grid" id="month-days-grid"></div>
+
+      <!-- Detalle de eventos del día seleccionado en el calendario -->
+      <div id="month-selected-day-details" class="month-selected-day-details hidden">
+        <div class="day-details-header">
+          <h4 id="month-selected-day-title">Eventos del día</h4>
+          <button class="btn-primary" id="month-add-event-btn" onclick="addEventOnSelectedDay()">+ Añadir Evento</button>
+        </div>
+        <div id="month-selected-day-events" class="month-day-events-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMACIÓN Y PIN DE PADRES PARA TAREAS Y PUNTOS -->
+  <div id="parent-pin-prompt-modal" class="modal-overlay hidden" onclick="closeParentPinPrompt()">
+    <div class="modal-card small-modal" onclick="event.stopPropagation()" style="max-width:320px; text-align:center;">
+      <div class="modal-header">
+        <h3 id="prompt-pin-title">🔒 Control de Padres</h3>
+        <button class="modal-close" onclick="closeParentPinPrompt()">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 12px 16px;">
+        <p id="prompt-pin-action-desc" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">Solo los padres pueden validar o quitar tareas y puntos.</p>
+        <div class="pin-display" id="prompt-pin-display" style="justify-content:center; margin-bottom:12px;">
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+        </div>
+        <div id="prompt-pin-error" class="pin-error-msg hidden" style="margin-bottom:8px; font-size:0.85rem;">PIN incorrecto</div>
+        <div class="pin-keypad" style="max-width:220px; margin:0 auto; gap:8px;">
+          <button class="pin-key" onclick="pressPromptPinKey('1')">1</button>
+          <button class="pin-key" onclick="pressPromptPinKey('2')">2</button>
+          <button class="pin-key" onclick="pressPromptPinKey('3')">3</button>
+          <button class="pin-key" onclick="pressPromptPinKey('4')">4</button>
+          <button class="pin-key" onclick="pressPromptPinKey('5')">5</button>
+          <button class="pin-key" onclick="pressPromptPinKey('6')">6</button>
+          <button class="pin-key" onclick="pressPromptPinKey('7')">7</button>
+          <button class="pin-key" onclick="pressPromptPinKey('8')">8</button>
+          <button class="pin-key" onclick="pressPromptPinKey('9')">9</button>
+          <button class="pin-key pin-key-action" onclick="clearPromptPinKey()">⌫</button>
+          <button class="pin-key" onclick="pressPromptPinKey('0')">0</button>
+          <button class="pin-key pin-key-action pin-key-submit" onclick="submitPromptPin()">↵</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR DE CONFETI -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <script src="/app.js?v=2.9.1"></script>
+</body>
+</html>

@@ -158,7 +158,7 @@ function activateKioskMode() {
   fetchState();
 }
 
-// Control de vistas en navegación móvil (PWA)
+// Control de vistas en navegación por pantallas (Tablet & Móvil)
 function switchMobileView(view) {
   currentMobileView = view;
   const grid = document.getElementById('main-grid');
@@ -168,7 +168,8 @@ function switchMobileView(view) {
   const btn = document.getElementById(`mob-nav-${view}`);
   if (btn) btn.classList.add('active');
 
-  if (view === 'shopping') switchRightTab('shopping');
+  if (view === 'rewards') switchRightTab('rewards');
+  else if (view === 'shopping') switchRightTab('shopping');
   else if (view === 'menu') switchRightTab('menu');
   else if (view === 'photos') switchRightTab('photos');
   else if (view === 'more') switchRightTab('notes');
@@ -391,8 +392,10 @@ async function fetchState() {
 function renderAll() {
   renderHeaderWeather();
   renderCalendarFilters();
+  renderInlineMonthCalendar();
   renderCalendarEvents();
   renderMemberSelectorTabs();
+  renderRewardsMemberTabs();
   renderMemberProgressBanner();
   renderTasksList();
   renderRightPanel();
@@ -586,6 +589,9 @@ function dismissAlarm() {
 }
 
 // --- COLUMNA 1: FILTROS Y EVENTOS DE CALENDARIO ---
+let inlineCalendarDate = new Date();
+let selectedInlineDay = null;
+
 function renderCalendarFilters() {
   const bar = document.getElementById('calendar-member-filters');
   if (!bar) return;
@@ -595,11 +601,11 @@ function renderCalendarFilters() {
   state.members.forEach(m => {
     const isAct = String(m.id) === calendarFilter;
     const avatarHtml = m.photo_url 
-      ? `<img src="${m.photo_url}" alt="${escapeHtml(m.name)}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">`
+      ? `<img src="${m.photo_url}" alt="${escapeHtml(m.name)}" style="width:20px; height:20px; border-radius:50%; object-fit:cover;">`
       : `${m.avatar || '👤'}`;
     html += `
       <button class="filter-pill ${isAct ? 'active' : ''}" style="${isAct ? `background:${m.color}; border-color:${m.color}; color:#fff;` : ''}" onclick="filterCalendar('${m.id}')" title="${escapeHtml(m.name)}">
-        ${avatarHtml}
+        ${avatarHtml} <span>${escapeHtml(m.name)}</span>
       </button>
     `;
   });
@@ -607,11 +613,93 @@ function renderCalendarFilters() {
   const isCommunity = calendarFilter === 'soto' || calendarFilter === 'community';
   html += `
     <button class="filter-pill ${isCommunity ? 'active' : ''}" style="${isCommunity ? 'background:var(--member-soto); border-color:var(--member-soto); color:#fff;' : ''}" onclick="filterCalendar('community')">
-      🏛️ Local
+      🏛️ Agenda Local
     </button>
   `;
 
   bar.innerHTML = html;
+}
+
+function renderInlineMonthCalendar() {
+  const titleEl = document.getElementById('inline-month-title');
+  const gridEl = document.getElementById('inline-month-days-grid');
+  if (!titleEl || !gridEl) return;
+
+  const year = inlineCalendarDate.getFullYear();
+  const month = inlineCalendarDate.getMonth();
+  const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  titleEl.textContent = `${meses[month]} ${year}`;
+
+  const weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  let html = weekdays.map(d => `<div class="weekday-header">${d}</div>`).join('');
+
+  const firstDay = new Date(year, month, 1);
+  let startDay = firstDay.getDay() - 1;
+  if (startDay < 0) startDay = 6;
+
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  const prevMonthDays = new Date(year, month, 0).getDate();
+
+  for (let i = startDay - 1; i >= 0; i--) {
+    html += `<div class="month-day-cell other-month">${prevMonthDays - i}</div>`;
+  }
+
+  const todayStr = getLocalDateStr();
+
+  for (let day = 1; day <= totalDays; day++) {
+    const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const isToday = dayStr === todayStr;
+
+    const dayEvents = (state.events || []).filter(ev => ev.date === dayStr);
+    const hasBday = dayEvents.some(ev => ev.source === 'birthday');
+    const hasEvent = dayEvents.length > 0;
+
+    let classes = 'month-day-cell';
+    if (isToday) classes += ' today';
+    if (hasBday) classes += ' has-birthday';
+    else if (hasEvent) classes += ' has-event';
+    if (selectedInlineDay === dayStr) classes += ' selected';
+
+    html += `
+      <div class="${classes}" onclick="selectInlineDay('${dayStr}')">
+        <span>${day}</span>
+      </div>
+    `;
+  }
+
+  gridEl.innerHTML = html;
+}
+
+function changeMonth(delta) {
+  inlineCalendarDate.setMonth(inlineCalendarDate.getMonth() + delta);
+  renderInlineMonthCalendar();
+}
+
+function selectInlineDay(dayStr) {
+  if (selectedInlineDay === dayStr) {
+    clearInlineDayFilter();
+    return;
+  }
+  selectedInlineDay = dayStr;
+  const filterBar = document.getElementById('inline-day-filter-bar');
+  const labelEl = document.getElementById('inline-day-filter-label');
+  if (filterBar && labelEl) {
+    const parts = dayStr.split('-');
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const formatted = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+    labelEl.textContent = `Día: ${formatted}`;
+    filterBar.classList.remove('hidden');
+  }
+  renderInlineMonthCalendar();
+  renderCalendarEvents();
+}
+
+function clearInlineDayFilter() {
+  selectedInlineDay = null;
+  const filterBar = document.getElementById('inline-day-filter-bar');
+  if (filterBar) filterBar.classList.add('hidden');
+  renderInlineMonthCalendar();
+  renderCalendarEvents();
 }
 
 function filterCalendar(target) {
@@ -629,8 +717,9 @@ function renderCalendarEvents() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = getLocalDateStr(tomorrow);
 
-  // Filtrar según botón seleccionado
+  // Filtrar según botón seleccionado y día del calendario
   let filtered = state.events.filter(ev => {
+    if (selectedInlineDay && ev.date !== selectedInlineDay) return false;
     if (calendarFilter === 'all') return true;
     if (calendarFilter === 'soto' || calendarFilter === 'community') return ev.source === 'soto' || ev.source === 'community';
     return String(ev.member_id) === calendarFilter;
@@ -643,11 +732,13 @@ function renderCalendarEvents() {
     return da.localeCompare(db);
   });
 
-  // No mostrar eventos pasados de más de 1 día
-  filtered = filtered.filter(ev => ev.date >= todayStr);
+  // No mostrar eventos pasados si no se ha seleccionado un día específico
+  if (!selectedInlineDay) {
+    filtered = filtered.filter(ev => ev.date >= todayStr);
+  }
 
   if (filtered.length === 0) {
-    listEl.innerHTML = `<div style="text-align:center; padding:30px 10px; color:var(--text-dim); font-size:0.85rem;">No hay eventos programados</div>`;
+    listEl.innerHTML = `<div style="text-align:center; padding:30px 10px; color:var(--text-dim); font-size:0.85rem;">No hay eventos para el filtro seleccionado</div>`;
     return;
   }
 
@@ -758,26 +849,53 @@ function renderMemberSelectorTabs() {
   state.members.forEach(m => {
     const isAct = m.id === activeMemberId;
     const avatarContent = m.photo_url
-      ? `<img src="${m.photo_url}" alt="${m.name}">`
-      : m.avatar;
+      ? `<img src="${m.photo_url}" alt="${escapeHtml(m.name)}">`
+      : (m.avatar || '👤');
 
     html += `
-      <button class="member-tab-btn ${isAct ? 'active' : ''}" 
-              style="${isAct ? `border-color:${m.color};` : ''}" 
-              onclick="selectTaskMember(${m.id})" 
-              title="${m.name}">
-        ${avatarContent}
-      </button>
+      <div class="member-card-tab ${isAct ? 'active' : ''}" onclick="selectTaskMember(${m.id})">
+        <div class="member-tab-avatar" style="background:${m.color}33;">
+          ${avatarContent}
+        </div>
+        <span class="member-tab-name">${escapeHtml(m.name)}</span>
+        <span class="member-tab-points">${m.points} ⭐</span>
+      </div>
     `;
   });
   tabsContainer.innerHTML = html;
 }
 
+function renderRewardsMemberTabs() {
+  const container = document.getElementById('rewards-member-tabs');
+  if (!container) return;
+
+  let html = '';
+  state.members.forEach(m => {
+    const isAct = m.id === activeMemberId;
+    const avatarContent = m.photo_url
+      ? `<img src="${m.photo_url}" alt="${escapeHtml(m.name)}">`
+      : (m.avatar || '👤');
+
+    html += `
+      <div class="member-card-tab ${isAct ? 'active' : ''}" onclick="selectTaskMember(${m.id})">
+        <div class="member-tab-avatar" style="background:${m.color}33;">
+          ${avatarContent}
+        </div>
+        <span class="member-tab-name">${escapeHtml(m.name)}</span>
+        <span class="member-tab-points">${m.points} ⭐</span>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
 function selectTaskMember(memberId) {
   activeMemberId = memberId;
   renderMemberSelectorTabs();
+  renderRewardsMemberTabs();
   renderMemberProgressBanner();
   renderTasksList();
+  renderRewards();
 }
 
 function renderMemberProgressBanner() {
@@ -941,7 +1059,7 @@ function renderRewards() {
   const userPoints = currentMember ? currentMember.points : 0;
 
   if (state.rewards.length === 0) {
-    container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-dim);">No hay premios disponibles</div>`;
+    container.innerHTML = `<div style="grid-column: 1 / -1; text-align:center; padding:40px; color:var(--text-dim); font-size:1rem;">No hay premios disponibles</div>`;
     return;
   }
 
@@ -953,11 +1071,11 @@ function renderRewards() {
         <div class="reward-left">
           <div class="reward-icon">${r.icon || '🎁'}</div>
           <div>
-            <div class="reward-title">${escapeHtml(r.title)}</div>
-            ${r.description ? `<div class="reward-desc">${escapeHtml(r.description)}</div>` : ''}
+            <div class="reward-title" style="font-size:1.05rem; font-weight:700;">${escapeHtml(r.title)}</div>
+            ${r.description ? `<div class="reward-desc" style="font-size:0.82rem; color:var(--text-dim); margin-top:3px;">${escapeHtml(r.description)}</div>` : ''}
           </div>
         </div>
-        <div style="display:flex; gap:6px; align-items:center;">
+        <div style="display:flex; gap:8px; align-items:center; margin-top:auto;">
           <button class="reward-edit-btn" onclick="handleEditRewardProtected(${r.id})" title="Editar premio">✏️</button>
           <button class="reward-claim-btn" ${!canAfford ? 'disabled' : ''} onclick="claimReward(${r.id})">
             Canjear (${r.cost} ⭐)
@@ -1013,7 +1131,7 @@ function claimReward(rewardId) {
 function renderMenu() {
   const todayBox = document.getElementById('today-menu-box');
   const weekList = document.getElementById('weekly-menu-list');
-  if (!todayBox || !weekList) return;
+  if (!weekList) return;
 
   const now = new Date();
   let dayIdx = now.getDay(); // 0 Dom, 1 Lun...
@@ -1021,33 +1139,34 @@ function renderMenu() {
 
   const todayMenu = state.weeklyMenu.find(m => m.day_of_week === dayIdx) || { lunch: 'No planificado', dinner: 'No planificado' };
   
-  todayBox.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-      <span style="font-weight:700; font-size:0.85rem; color:#38bdf8;">Comida de Hoy</span>
-      <button class="menu-edit-btn" onclick="openEditMenuDayModal(${dayIdx})" title="Editar menú de hoy">✏️</button>
-    </div>
-    <div class="menu-meal-row">
-      <span class="menu-meal-label">Comida:</span>
-      <span class="menu-meal-value">${escapeHtml(todayMenu.lunch || 'Sin asignar')}</span>
-    </div>
-    <div class="menu-meal-row">
-      <span class="menu-meal-label">Cena:</span>
-      <span class="menu-meal-value">${escapeHtml(todayMenu.dinner || 'Sin asignar')}</span>
-    </div>
-  `;
+  if (todayBox) {
+    todayBox.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); padding:6px 14px; border-radius:12px;">
+        <span style="font-weight:700; font-size:0.85rem; color:#38bdf8;">Hoy:</span>
+        <span style="font-size:0.85rem; color:#fff;">☀️ ${escapeHtml(todayMenu.lunch || 'Sin asignar')} · 🌙 ${escapeHtml(todayMenu.dinner || 'Sin asignar')}</span>
+        <button class="menu-edit-btn" onclick="openEditMenuDayModal(${dayIdx})" title="Editar menú de hoy">✏️</button>
+      </div>
+    `;
+  }
 
   const diasNombres = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   let html = '';
   state.weeklyMenu.forEach(item => {
     const isToday = item.day_of_week === dayIdx;
     html += `
-      <div class="menu-day-row" style="${isToday ? 'border-color:var(--color-primary); background:rgba(56,189,248,0.06);' : ''}">
-        <span class="menu-day-name">${isToday ? '👉 ' : ''}${diasNombres[item.day_of_week]}</span>
-        <div class="menu-day-details">
-          <span>🍽️ ${escapeHtml(item.lunch || '-')}</span>
-          <span style="color:var(--text-muted); font-size:0.72rem;">🌙 ${escapeHtml(item.dinner || '-')}</span>
+      <div class="menu-day-card ${isToday ? 'today' : ''}">
+        <div class="menu-day-card-header">
+          <span class="menu-day-card-name">${diasNombres[item.day_of_week]} ${isToday ? '(HOY)' : ''}</span>
+          <button class="menu-edit-btn" onclick="openEditMenuDayModal(${item.day_of_week})" title="Editar menú del ${diasNombres[item.day_of_week]}">✏️</button>
         </div>
-        <button class="menu-edit-btn" onclick="openEditMenuDayModal(${item.day_of_week})" title="Editar menú del ${diasNombres[item.day_of_week]}">✏️</button>
+        <div class="menu-meal-block">
+          <b>☀️ Comida:</b>
+          <div style="font-weight:600; color:#fff; margin-top:2px;">${escapeHtml(item.lunch || 'Sin planificar')}</div>
+        </div>
+        <div class="menu-meal-block">
+          <b>🌙 Cena:</b>
+          <div style="font-weight:600; color:#cbd5e1; margin-top:2px;">${escapeHtml(item.dinner || 'Sin planificar')}</div>
+        </div>
       </div>
     `;
   });
