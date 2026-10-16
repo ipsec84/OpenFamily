@@ -15,7 +15,15 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const PHOTOS_DIR = path.join(DATA_DIR, 'photos');
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.9.0';
+
+function formatLocalDate(dateObj) {
+  const d = dateObj instanceof Date ? dateObj : new Date(dateObj);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -58,6 +66,9 @@ const dbGet = (sql, params = []) => new Promise((res, rej) => db.get(sql, params
 
 // --- DATABASE TABLES ---
 db.serialize(() => {
+  db.run('PRAGMA journal_mode = WAL');
+  db.run('PRAGMA busy_timeout = 5000');
+
   // Usuarios / Admin
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -193,7 +204,7 @@ db.serialize(() => {
       console.log('Creando usuario administrador...');
       const adminPass = process.env.ADMIN_PASSWORD || 'Admin1234.';
       const adminPassHash = hashPassword(adminPass);
-      db.run(`INSERT INTO users (username, password_hash, role) VALUES ('admin', '${adminPassHash}', 'admin')`);
+      db.run(`INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)`, ['admin', adminPassHash, 'admin']);
     }
   });
 
@@ -251,17 +262,18 @@ db.serialize(() => {
         ('Cámara Entrada / Jardín', '192.168.1.101', 'rtsp://usuario:password@192.168.1.101:554/stream2', 'Exterior')
       `);
 
-      db.run(`INSERT INTO settings (key, value) VALUES
-        ('location_name', '${process.env.CITY_NAME || 'Mi Hogar'}'),
-        ('latitude', '${process.env.LATITUDE || '40.4168'}'),
-        ('longitude', '${process.env.LONGITUDE || '-3.7038'}'),
-        ('night_start', '23:00'),
-        ('night_end', '07:30'),
-        ('parent_pin', '${process.env.PARENT_PIN || '1234'}'),
-        ('soto_feed_url', '${process.env.ICAL_URL || ''}'),
-        ('screensaver_timeout_minutes', '5'),
-        ('app_version', '${APP_VERSION}')
-      `);
+      const defaultSettings = [
+        ['location_name', process.env.CITY_NAME || 'Mi Hogar'],
+        ['latitude', process.env.LATITUDE || '40.4168'],
+        ['longitude', process.env.LONGITUDE || '-3.7038'],
+        ['parent_pin', process.env.PARENT_PIN || '1234'],
+        ['soto_feed_url', process.env.ICAL_URL || ''],
+        ['screensaver_timeout_minutes', '5'],
+        ['app_version', APP_VERSION]
+      ];
+      for (const [k, v] of defaultSettings) {
+        db.run(`INSERT INTO settings (key, value) VALUES (?, ?)`, [k, String(v)]);
+      }
     }
   });
 });
@@ -303,7 +315,7 @@ async function syncExternalCalendars() {
         for (const k in webEvents) {
           const ev = webEvents[k];
           if (ev.type === 'VEVENT' && ev.start) {
-            const dateStr = ev.start.toISOString().split('T')[0];
+            const dateStr = formatLocalDate(ev.start);
             const timeStr = ev.start.toTimeString().substring(0, 5);
             events.push({
               id: 'ical_' + k,
@@ -337,7 +349,7 @@ async function syncExternalCalendars() {
               member_id: null,
               member_name: 'Agenda Local',
               color: '#0284c7',
-              date: ev.start.toISOString().split('T')[0],
+              date: formatLocalDate(ev.start),
               time: ev.start.toTimeString().substring(0, 5),
               all_day: ev.datetype === 'date' ? 1 : 0,
               source: 'community'
@@ -855,19 +867,21 @@ app.post('/api/members/:id/points', async (req, res) => {
   }
 });
 
-// Actualizar datos de miembro (Nombre, avatar, color, birthdate, ical_url, photo_url)
+// Actualizar datos de miembro (Nombre, avatar, color, birthdate, ical_url, photo_url, points)
 app.post('/api/members/:id', async (req, res) => {
   try {
-    const { name, avatar, color, birthdate, ical_url, photo_url } = req.body;
+    const { name, avatar, color, birthdate, ical_url, photo_url, points } = req.body;
+    const parsedPoints = (points !== undefined && points !== null && points !== '') ? Math.max(0, parseInt(points, 10) || 0) : null;
     await dbRun(`UPDATE members SET 
       name = COALESCE(?, name), 
       avatar = COALESCE(?, avatar), 
       color = COALESCE(?, color), 
       birthdate = COALESCE(?, birthdate), 
       ical_url = COALESCE(?, ical_url),
-      photo_url = COALESCE(?, photo_url)
+      photo_url = COALESCE(?, photo_url),
+      points = COALESCE(?, points)
       WHERE id = ?`,
-      [name, avatar, color, birthdate, ical_url, photo_url, req.params.id]);
+      [name, avatar, color, birthdate, ical_url, photo_url, parsedPoints, req.params.id]);
     lastIcalSync = 0; // forzar refresco
     broadcast({ type: 'REFRESH' });
     res.json({ success: true });

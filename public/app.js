@@ -10,6 +10,13 @@ if (!Array.prototype.toSorted) {
   };
 }
 
+function getLocalDateStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // Estado Global
 let state = {
   members: [],
@@ -32,6 +39,7 @@ let ws = null;
 let audioCtx = null;
 let isNightMode = false;
 let isAdminLoggedIn = false;
+let parentAuthUntil = 0;
 let pendingPhotoBase64 = null;
 
 // --- SISTEMA DE AUTENTICACIÓN Y SEGURIDAD PADRES ---
@@ -167,7 +175,7 @@ function switchMobileView(view) {
 }
 
 // --- GESTIÓN DE SONIDO Y AUDIO CONTEXT ---
-let isSoundMuted = localStorage.getItem('openfamily_sound_muted') === 'true';
+let isSoundMuted = false;
 
 function getAudioContext() {
   if (!audioCtx) {
@@ -180,24 +188,6 @@ function getAudioContext() {
     audioCtx.resume();
   }
   return audioCtx;
-}
-
-function toggleSound() {
-  isSoundMuted = !isSoundMuted;
-  localStorage.setItem('openfamily_sound_muted', isSoundMuted ? 'true' : 'false');
-  updateSoundButtonUI();
-  if (!isSoundMuted) {
-    playTaskSuccessSound();
-  }
-}
-
-function updateSoundButtonUI() {
-  const btn = document.getElementById('sound-toggle-btn');
-  if (btn) {
-    btn.innerHTML = isSoundMuted ? '<span>🔇</span>' : '<span>🔊</span>';
-    btn.title = isSoundMuted ? 'Sonidos silenciados (Toca para activar)' : 'Sonidos activados (Toca para silenciar)';
-    btn.classList.toggle('muted', isSoundMuted);
-  }
 }
 
 // Sonido Web Audio API alegre para tarea completada (C5 -> E5)
@@ -279,7 +269,7 @@ function playDinnerBell() {
   }
 }
 
-// --- WAKE LOCK API & PANTALLA COMPLETA ---
+// --- WAKE LOCK API ---
 let wakeLockSentinel = null;
 
 async function requestWakeLock() {
@@ -293,30 +283,6 @@ async function requestWakeLock() {
     } catch (err) {
       console.warn('OpenFamily: No se pudo adquirir Wake Lock:', err);
     }
-  }
-}
-
-function toggleFullscreen() {
-  try {
-    if (!document.fullscreenElement) {
-      const elem = document.documentElement;
-      if (elem.requestFullscreen) elem.requestFullscreen();
-      else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-    } else {
-      if (document.exitFullscreen) document.exitFullscreen();
-      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    }
-  } catch (err) {
-    console.warn('Fullscreen error:', err);
-  }
-}
-
-function updateFullscreenButtonUI() {
-  const btn = document.getElementById('fullscreen-toggle-btn');
-  if (btn) {
-    const isFs = !!document.fullscreenElement;
-    btn.innerHTML = isFs ? '<span>🗗</span>' : '<span>⛶</span>';
-    btn.title = isFs ? 'Salir de Pantalla Completa' : 'Pantalla Completa';
   }
 }
 
@@ -364,9 +330,6 @@ function initWebSocket() {
         case 'POPUP_MESSAGE':
           alert(`📢 Mensaje de los Padres:\n\n${data.text}`);
           break;
-        case 'NIGHT_MODE':
-          toggleNightMode(data.active);
-          break;
       }
     } catch (err) {
       console.error('Error procesando WS:', err);
@@ -404,7 +367,7 @@ async function fetchState() {
     }
 
     renderAll();
-    if (window.PhotoLocalCache && state.photos && state.photos.length > 0) {
+    if (window.PhotoLocalCache && Array.isArray(state.photos)) {
       PhotoLocalCache.syncServerPhotos(state.photos);
     }
   } catch (err) {
@@ -428,8 +391,6 @@ function initClock() {
   const timeEl = document.getElementById('clock-time');
   const secEl = document.getElementById('clock-seconds');
   const dateEl = document.getElementById('clock-date');
-  const nightTimeEl = document.getElementById('night-time');
-  const nightDateEl = document.getElementById('night-date');
 
   function update() {
     const now = new Date();
@@ -439,40 +400,16 @@ function initClock() {
 
     if (timeEl) timeEl.textContent = `${h}:${m}`;
     if (secEl) secEl.textContent = `:${s}`;
-    if (nightTimeEl) nightTimeEl.textContent = `${h}:${m}`;
 
     const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     
     const dateStr = `${dias[now.getDay()]}, ${now.getDate()} de ${meses[now.getMonth()]}`;
     if (dateEl) dateEl.textContent = dateStr;
-    if (nightDateEl) nightDateEl.textContent = dateStr;
-
-    // Modo noche automático si está configurado
-    checkAutoNightMode(now);
   }
 
   update();
   setInterval(update, 1000);
-}
-
-function checkAutoNightMode(now) {
-  if (!state.settings || !state.settings.night_start || !state.settings.night_end) return;
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-  const [startH, startM] = state.settings.night_start.split(':').map(Number);
-  const [endH, endM] = state.settings.night_end.split(':').map(Number);
-  const startMinutes = startH * 60 + startM;
-  const endMinutes = endH * 60 + endM;
-
-  let shouldBeNight = false;
-  if (startMinutes > endMinutes) {
-    shouldBeNight = currentMinutes >= startMinutes || currentMinutes < endMinutes;
-  } else {
-    shouldBeNight = currentMinutes >= startMinutes && currentMinutes < endMinutes;
-  }
-
-  // Modo noche eliminado por completo a petición
 }
 
 // --- CLIMA LOCAL ---
@@ -675,10 +612,10 @@ function renderCalendarEvents() {
   const listEl = document.getElementById('events-list');
   if (!listEl) return;
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateStr();
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const tomorrowStr = getLocalDateStr(tomorrow);
 
   // Filtrar según botón seleccionado
   let filtered = state.events.filter(ev => {
@@ -842,23 +779,6 @@ function renderMemberProgressBanner() {
     ? `<img src="${currentMember.photo_url}" alt="${currentMember.name}" class="member-avatar-img">`
     : currentMember.avatar;
 
-  // Calcular edad si tiene cumpleaños
-  let ageHint = '';
-  if (currentMember.birthdate) {
-    const parts = currentMember.birthdate.split('-');
-    if (parts.length === 3) {
-      const bYear = parseInt(parts[0]);
-      const bMonth = parseInt(parts[1]) - 1;
-      const bDay = parseInt(parts[2]);
-      const now = new Date();
-      let age = now.getFullYear() - bYear;
-      if (now.getMonth() < bMonth || (now.getMonth() === bMonth && now.getDate() < bDay)) {
-        age--;
-      }
-      ageHint = ` • ${age} años`;
-    }
-  }
-
   banner.innerHTML = `
     <div class="member-progress-left">
       <div class="member-avatar-big" style="border: 2px solid ${currentMember.color};">
@@ -884,7 +804,7 @@ function renderTasksList() {
     listEl.innerHTML = `
       <div style="text-align:center; padding:40px 10px; color:var(--text-dim); font-size:0.85rem;">
         No hay tareas asignadas aún.<br>
-        <button class="btn-primary" style="margin-top:12px;" onclick="openAddTaskModal()">+ Crear la primera</button>
+        <button class="btn-primary" style="margin-top:12px;" onclick="handleAddTaskProtected(activeMemberId)">+ Crear la primera</button>
       </div>
     `;
     return;
@@ -946,6 +866,12 @@ async function executeToggleTask(taskId) {
   } catch (err) {
     console.error('Error toggling task:', err);
   }
+}
+
+function handleAddTaskProtected(memberId) {
+  requestParentPin(() => {
+    openAddTaskModalForMember(memberId);
+  }, 'Introduce el PIN de Padres para añadir una nueva tarea:');
 }
 
 function handleEditTaskProtected(taskId) {
@@ -1020,8 +946,8 @@ function renderRewards() {
           </div>
         </div>
         <div style="display:flex; gap:6px; align-items:center;">
-          <button class="reward-edit-btn" onclick="openEditRewardModal(${r.id})" title="Editar premio">✏️</button>
-          <button class="reward-claim-btn" ${!canAfford ? 'disabled' : ''} onclick="claimReward(${r.id}, ${r.cost}, '${escapeHtml(r.title)}')">
+          <button class="reward-edit-btn" onclick="handleEditRewardProtected(${r.id})" title="Editar premio">✏️</button>
+          <button class="reward-claim-btn" ${!canAfford ? 'disabled' : ''} onclick="claimReward(${r.id})">
             Canjear (${r.cost} ⭐)
           </button>
         </div>
@@ -1031,28 +957,44 @@ function renderRewards() {
   container.innerHTML = html;
 }
 
-async function claimReward(rewardId, cost, title) {
-  if (!activeMemberId) return;
-  const currentMember = state.members.find(m => m.id === activeMemberId);
-  if (!confirm(`¿${currentMember.name} quiere canjear "${title}" por ${cost} puntos?`)) return;
+function handleAddRewardProtected() {
+  requestParentPin(() => {
+    openAddRewardModal();
+  }, 'Introduce el PIN de Padres para añadir un premio:');
+}
 
-  try {
-    const res = await fetch(`/api/rewards/${rewardId}/redeem`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: activeMemberId })
-    });
-    if (res.ok) {
-      playRewardFanfareSound();
-      triggerConfetti();
-      fetchState();
-    } else {
-      const err = await res.json();
-      alert(err.error || 'No se pudo canjear');
+function handleEditRewardProtected(rewardId) {
+  requestParentPin(() => {
+    openEditRewardModal(rewardId);
+  }, 'Introduce el PIN de Padres para editar este premio:');
+}
+
+function claimReward(rewardId) {
+  if (!activeMemberId) return;
+  const reward = (state.rewards || []).find(item => item.id === rewardId);
+  const currentMember = state.members.find(m => m.id === activeMemberId);
+  if (!reward || !currentMember) return;
+
+  requestParentPin(async () => {
+    if (!confirm(`¿Confirmar canje de "${reward.title}" para ${currentMember.name} por ${reward.cost} ⭐?`)) return;
+    try {
+      const res = await fetch(`/api/rewards/${reward.id}/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_id: activeMemberId })
+      });
+      if (res.ok) {
+        playRewardFanfareSound();
+        triggerConfetti();
+        fetchState();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'No se pudo canjear');
+      }
+    } catch (e) {
+      console.error('Error claim reward:', e);
     }
-  } catch (e) {
-    console.error('Error claim reward:', e);
-  }
+  }, `Introduce el PIN de Padres para aprobar el canje de "${reward.title}" (-${reward.cost} ⭐):`);
 }
 
 // 2. Menú Semanal
@@ -1355,7 +1297,7 @@ async function saveMemberProfile() {
   const birthdate = document.getElementById('edit-member-birthdate').value;
   const color = document.getElementById('edit-member-color').value;
   const avatar = document.getElementById('edit-member-avatar').value.trim();
-  const points = parseInt(document.getElementById('edit-member-points').value) || 0;
+  const points = Math.max(0, parseInt(document.getElementById('edit-member-points').value, 10) || 0);
   const ical_url = document.getElementById('edit-member-ical').value.trim();
 
   if (!name) return alert('El nombre no puede estar vacío');
@@ -1370,11 +1312,11 @@ async function saveMemberProfile() {
       });
     }
 
-    // Actualizar datos de perfil
+    // Actualizar datos de perfil (incluyendo puntos)
     await fetch(`/api/members/${id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, birthdate, color, avatar, ical_url })
+      body: JSON.stringify({ name, birthdate, color, avatar, ical_url, points })
     });
 
     closeModal('member-modal');
@@ -1418,7 +1360,7 @@ function openAddEventModal(presetDate) {
   if (delBtn) delBtn.classList.add('hidden');
 
   populateMemberSelect('ev-member', '');
-  const today = presetDate || new Date().toISOString().split('T')[0];
+  const today = presetDate || getLocalDateStr();
   document.getElementById('ev-date').value = today;
   document.getElementById('ev-time').value = '12:00';
   document.getElementById('ev-title').value = '';
@@ -1598,7 +1540,11 @@ let pendingParentAction = null;
 let promptPinCode = '';
 
 function requestParentPin(callback, actionDesc) {
-  if (isAdminLoggedIn || sessionStorage.getItem('adminToken')) {
+  if (isAdminLoggedIn || Date.now() < parentAuthUntil) {
+    // Extender ventana de 60 segundos mientras el padre sigue interactuando
+    if (Date.now() < parentAuthUntil) {
+      parentAuthUntil = Date.now() + 60 * 1000;
+    }
     callback();
     return;
   }
@@ -1642,7 +1588,8 @@ function updatePromptPinDisplay() {
 function submitPromptPin() {
   const expectedPin = state.settings?.parent_pin || '1234';
   if (promptPinCode === expectedPin || promptPinCode === '1234') {
-    isAdminLoggedIn = true;
+    // Autorizar acciones rápidas de padres durante 60 segundos (y auto-bloquear después)
+    parentAuthUntil = Date.now() + 60 * 1000;
     closeModal('parent-pin-prompt-modal');
     if (pendingParentAction) {
       const cb = pendingParentAction;
@@ -1671,6 +1618,8 @@ function openAdminModal() {
 }
 
 function closeAdminModal() {
+  isAdminLoggedIn = false;
+  parentAuthUntil = 0;
   closeModal('admin-modal');
 }
 
@@ -1750,15 +1699,6 @@ async function remoteDinnerCall() {
     body: JSON.stringify({ title: '¡A CENAR!', message: '¡Llamada remota de los Padres!' })
   });
   alert('Campana "¡A Cenar!" activada en el marco.');
-}
-
-async function remoteToggleNight() {
-  isNightMode = !isNightMode;
-  await fetch('/api/remote/night-mode', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ active: isNightMode })
-  });
 }
 
 async function sendRemoteMessage() {
@@ -2025,26 +1965,51 @@ async function deleteCamera(id) {
 
 // Admin Ajustes
 function renderAdminSettings() {
-  if (state.settings.parent_pin) document.getElementById('setting-parent-pin').value = state.settings.parent_pin;
-  if (state.settings.night_start) document.getElementById('setting-night-start').value = state.settings.night_start;
-  if (state.settings.night_end) document.getElementById('setting-night-end').value = state.settings.night_end;
+  if (document.getElementById('setting-parent-pin')) {
+    document.getElementById('setting-parent-pin').value = state.settings.parent_pin || '1234';
+  }
+  if (document.getElementById('setting-screensaver-timeout')) {
+    document.getElementById('setting-screensaver-timeout').value = state.settings.screensaver_timeout_minutes || '3';
+  }
+  if (document.getElementById('setting-location-name')) {
+    document.getElementById('setting-location-name').value = state.settings.location_name || 'Mi Hogar';
+  }
+  if (document.getElementById('setting-latitude')) {
+    document.getElementById('setting-latitude').value = state.settings.latitude || '40.4168';
+  }
+  if (document.getElementById('setting-longitude')) {
+    document.getElementById('setting-longitude').value = state.settings.longitude || '-3.7038';
+  }
   const feed = state.settings.community_feed_url || state.settings.soto_feed_url || '';
-  if (document.getElementById('setting-soto-feed')) document.getElementById('setting-soto-feed').value = feed;
+  if (document.getElementById('setting-soto-feed')) {
+    document.getElementById('setting-soto-feed').value = feed;
+  }
 }
 
 async function saveSettings() {
-  const parent_pin = document.getElementById('setting-parent-pin').value.trim();
-  const night_start = document.getElementById('setting-night-start').value;
-  const night_end = document.getElementById('setting-night-end').value;
-  const community_feed_url = document.getElementById('setting-soto-feed').value.trim();
+  const parent_pin = document.getElementById('setting-parent-pin')?.value.trim() || '1234';
+  const screensaver_timeout_minutes = String(Math.max(1, parseInt(document.getElementById('setting-screensaver-timeout')?.value, 10) || 3));
+  const location_name = document.getElementById('setting-location-name')?.value.trim() || 'Mi Hogar';
+  const latitude = document.getElementById('setting-latitude')?.value.trim() || '40.4168';
+  const longitude = document.getElementById('setting-longitude')?.value.trim() || '-3.7038';
+  const community_feed_url = document.getElementById('setting-soto-feed')?.value.trim() || '';
 
   await fetch('/api/settings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ parent_pin, night_start, night_end, community_feed_url, soto_feed_url: community_feed_url })
+    body: JSON.stringify({
+      parent_pin,
+      screensaver_timeout_minutes,
+      location_name,
+      latitude,
+      longitude,
+      community_feed_url,
+      soto_feed_url: community_feed_url
+    })
   });
   alert('Ajustes guardados correctamente');
   fetchState();
+  resetIdleTimer();
 }
 
 // --- ANIMACIÓN DE CONFETI EN CANVAS ---
@@ -2173,7 +2138,7 @@ function renderMonthCalendarGrid() {
     html += `<div class="month-day-cell other-month">${prevMonthDays - i}</div>`;
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateStr();
 
   for (let day = 1; day <= totalDays; day++) {
     const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -2234,34 +2199,9 @@ function selectCalendarMonthDay(dayStr) {
 }
 
 function addEventOnSelectedDay() {
-  const day = selectedMonthCalendarDay || new Date().toISOString().split('T')[0];
+  const day = selectedMonthCalendarDay || getLocalDateStr();
   closeModal('calendar-month-modal');
   openAddEventModal(day);
-}
-
-// --- AJUSTES DE HARDWARE DEL MARCO (BRILLO, VOLUMEN, WIFI) ---
-function openDeviceControlsModal() {
-  openModal('device-controls-modal');
-}
-
-function handleBrightnessChange(val) {
-  const percent = Math.round((val / 255) * 100);
-  const valEl = document.getElementById('brightness-val');
-  if (valEl) valEl.textContent = `${percent}%`;
-
-  if (window.Android && window.Android.setBrightness) {
-    window.Android.setBrightness(parseInt(val));
-  }
-}
-
-function handleVolumeChange(val) {
-  const percent = Math.round((val / 15) * 100);
-  const valEl = document.getElementById('volume-val');
-  if (valEl) valEl.textContent = `${percent}%`;
-
-  if (window.Android && window.Android.setVolume) {
-    window.Android.setVolume(parseInt(val));
-  }
 }
 
 // --- MARCO DIGITAL DE FOTOS Y SALVAPANTALLAS INTELIGENTE ---
@@ -2333,9 +2273,33 @@ const PhotoLocalCache = {
     });
   },
   async syncServerPhotos(photos) {
-    if (!photos || photos.length === 0) return;
     await this.init();
     if (!this.db) return;
+    const validIds = new Set((photos || []).map(p => String(p.id)));
+
+    // 1. Limpiar fotos huérfanas borradas del servidor
+    try {
+      const localKeys = await new Promise(res => {
+        const tx = this.db.transaction('photos', 'readonly');
+        const req = tx.objectStore('photos').getAllKeys();
+        req.onsuccess = () => res(req.result || []);
+        req.onerror = () => res([]);
+      });
+      for (const k of localKeys) {
+        const keyStr = String(k);
+        if (!validIds.has(keyStr)) {
+          if (this.blobUrls.has(keyStr)) {
+            URL.revokeObjectURL(this.blobUrls.get(keyStr));
+            this.blobUrls.delete(keyStr);
+          }
+          const txDel = this.db.transaction('photos', 'readwrite');
+          txDel.objectStore('photos').delete(keyStr);
+        }
+      }
+    } catch (e) {}
+
+    // 2. Descargar fotos nuevas a IndexedDB
+    if (!photos || photos.length === 0) return;
     for (const p of photos) {
       try {
         const key = String(p.id);
@@ -2493,8 +2457,8 @@ function resetIdleTimer(e) {
     return;
   }
 
-  // 3 minutos de inactividad por defecto
-  const timeoutMs = 3 * 60 * 1000;
+  const timeoutMin = Math.max(1, parseInt(state.settings?.screensaver_timeout_minutes, 10) || 3);
+  const timeoutMs = timeoutMin * 60 * 1000;
   idleTimer = setTimeout(() => {
     const alarm = document.getElementById('alarm-banner');
     if ((!alarm || alarm.classList.contains('hidden')) && !isNightMode) {
@@ -2809,12 +2773,6 @@ window.addEventListener('DOMContentLoaded', () => {
   ['mousemove', 'mousedown', 'touchstart', 'touchmove', 'keydown', 'scroll'].forEach(evt => {
     window.addEventListener(evt, resetIdleTimer, { passive: true });
   });
-
-  // Inicializar estado de sonido y pantalla completa
-  updateSoundButtonUI();
-  updateFullscreenButtonUI();
-  document.addEventListener('fullscreenchange', updateFullscreenButtonUI);
-  document.addEventListener('webkitfullscreenchange', updateFullscreenButtonUI);
 
   // Intentar adquirir Wake Lock para evitar apagado involuntario de pantalla
   requestWakeLock();

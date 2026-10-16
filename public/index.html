@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>OpenFamily - Smart Family Dashboard</title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/style.css?v=2.8.5">
+  <link rel="stylesheet" href="/style.css?v=2.9.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -193,7 +193,7 @@
 
         <!-- Botón Añadir Tarea idéntico a Añadir Premio -->
         <div class="pane-header-info" style="display: flex; margin: 6px 0 10px 0;">
-          <button class="btn-secondary" onclick="openAddTaskModalForMember(activeMemberId)" style="width: 100%; padding: 6px 12px; font-size: 0.85rem; font-weight: 700;">+ Añadir Tarea</button>
+          <button class="btn-secondary" onclick="handleAddTaskProtected(activeMemberId)" style="width: 100%; padding: 6px 12px; font-size: 0.85rem; font-weight: 700;">+ Añadir Tarea</button>
         </div>
 
         <!-- Lista táctil de tareas del día -->
@@ -216,8 +216,8 @@
 
         <!-- TAB 1: TIENDA DE RECOMPENSAS -->
         <div id="tab-content-rewards" class="tab-pane active">
-          <div class="pane-header-info" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
-            <button class="btn-secondary" onclick="openAddRewardModal()" style="padding: 4px 10px; font-size: 0.78rem; white-space: nowrap; flex-shrink: 0;">+ Añadir Premio</button>
+          <div class="pane-header-info" style="display: flex; margin: 6px 0 10px 0;">
+            <button class="btn-secondary" onclick="handleAddRewardProtected()" style="width: 100%; padding: 6px 12px; font-size: 0.85rem; font-weight: 700;">+ Añadir Premio</button>
           </div>
           <div class="rewards-grid" id="rewards-grid">
             <!-- Premios dinámicos -->
@@ -499,16 +499,27 @@
         <div id="admin-subtab-settings" class="admin-tab-pane hidden">
           <h4>Ajustes Generales del Sistema</h4>
           <div class="settings-form">
-            <label>PIN de Acceso Rápido Padres:
-              <input type="text" id="setting-parent-pin" maxlength="8">
-            </label>
-            <label>Horario Modo Noche (Inicio - Fin):
-              <div class="time-range-inputs">
-                <input type="time" id="setting-night-start"> a <input type="time" id="setting-night-end">
-              </div>
-            </label>
+            <div class="row-two">
+              <label>PIN de Acceso Rápido Padres:
+                <input type="text" id="setting-parent-pin" maxlength="8" placeholder="1234">
+              </label>
+              <label>Salvapantallas Fotos (minutos inactivo):
+                <input type="number" id="setting-screensaver-timeout" min="1" max="120" value="3">
+              </label>
+            </div>
+            <div class="row-two">
+              <label>Ciudad / Ubicación del Clima:
+                <input type="text" id="setting-location-name" placeholder="Ej: Madrid">
+              </label>
+              <label>Latitud / Longitud:
+                <div style="display:flex; gap:6px;">
+                  <input type="text" id="setting-latitude" placeholder="40.4168">
+                  <input type="text" id="setting-longitude" placeholder="-3.7038">
+                </div>
+              </label>
+            </div>
             <label>URL Agenda Local / Externa (iCal):
-              <input type="text" id="setting-soto-feed">
+              <input type="text" id="setting-soto-feed" placeholder="https://...">
             </label>
             <button class="btn-primary" onclick="saveSettings()">Guardar Ajustes</button>
           </div>
@@ -749,33 +760,6 @@
     </div>
   </div>
 
-  <!-- MODAL: CONTROL DE HARDWARE DEL MARCO (BRILLO, VOLUMEN, WIFI) -->
-  <div id="device-controls-modal" class="modal-overlay hidden" onclick="closeModal('device-controls-modal')">
-    <div class="device-controls-card" onclick="event.stopPropagation()">
-      <div class="modal-header" style="padding:0 0 12px 0;">
-        <h3>🎛️ Ajustes del Marco</h3>
-        <button class="modal-close" onclick="closeModal('device-controls-modal')">✕</button>
-      </div>
-      <div class="device-slider-group">
-        <div class="device-slider-header">
-          <span>☀️ Brillo de Pantalla</span>
-          <span id="brightness-val">100%</span>
-        </div>
-        <input type="range" id="brightness-slider" class="device-slider" min="15" max="255" value="220" oninput="handleBrightnessChange(this.value)">
-      </div>
-      <div class="device-slider-group">
-        <div class="device-slider-header">
-          <span>🔊 Volumen de Sonido</span>
-          <span id="volume-val">80%</span>
-        </div>
-        <input type="range" id="volume-slider" class="device-slider" min="0" max="15" value="12" oninput="handleVolumeChange(this.value)">
-      </div>
-      <button class="btn-primary full-width" style="padding:12px; font-size:1rem;" onclick="openDeviceWifiSettings()">
-        📶 Conectar a Red Wi-Fi
-      </button>
-    </div>
-  </div>
-
   <!-- MODAL: CONFIRMACIÓN Y PIN DE PADRES PARA TAREAS Y PUNTOS -->
   <div id="parent-pin-prompt-modal" class="modal-overlay hidden" onclick="closeParentPinPrompt()">
     <div class="modal-card small-modal" onclick="event.stopPropagation()" style="max-width:320px; text-align:center;">
@@ -813,6 +797,6 @@
   <!-- CONTENEDOR DE CONFETI -->
   <canvas id="confetti-canvas"></canvas>
 
-  <script src="/app.js?v=2.8.5"></script>
+  <script src="/app.js?v=2.9.0"></script>
 </body>
 </html>
